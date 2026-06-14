@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TeamDekho - Simple, Transparent Pricing</title>
+  <style>
+    :root {
+      --primary: #1a2d4e;
+      --secondary: #00b4a6;
+      --secondary-hover: #00968b;
+      --bg-dark: #0f172a;
+      --card-bg: #1e293b;
+      --text-muted: #94a3b8;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
+      background: linear-gradient(135deg, #0f2027, #1e293b, #0f172a);
+      color: #f8fafc;
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    /* Header Styles */
+    header {
+      background: rgba(26, 45, 78, 0.9);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .nav-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .logo {
+      text-decoration: none;
+    }
+
+    .logo h1 {
+      font-size: 1.8rem;
+      font-weight: 800;
+    }
+
+    .logo h1 span.team { color: #ffffff; }
+    .logo h1 span.dekho { color: var(--secondary); }
+
+    nav {
+      display: flex;
+      gap: 2rem;
+    }
+
+    nav a {
+      color: #f1f5f9;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 1rem;
+      transition: color 0.2s;
+    }
+
+    nav a:hover {
+      color: var(--secondary);
+    }
+
+    /* Hero Section */
+    .hero {
+      text-align: center;
+      padding: 4rem 2rem 2rem;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .hero h2 {
+      font-size: 2.8rem;
+      font-weight: 800;
+      margin-bottom: 1rem;
+      background: linear-gradient(to right, #ffffff, var(--secondary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero p {
+      font-size: 1.2rem;
+      color: var(--text-muted);
+      margin-bottom: 1.5rem;
+    }
+
+    .tagline-badge {
+      display: inline-block;
+      background: rgba(0, 180, 166, 0.1);
+      border: 1px solid var(--secondary);
+      color: var(--secondary);
+      padding: 0.5rem 1.2rem;
+      border-radius: 9999px;
+      font-weight: bold;
+      font-size: 0.95rem;
+      margin-bottom: 2.5rem;
+    }
+
+    /* Toggle Switch */
+    .toggle-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 3rem;
+    }
+
+    .toggle-label {
+      font-weight: 600;
+      font-size: 1.1rem;
+      color: #f1f5f9;
+    }
+
+    .toggle-switch {
+      position: relative;
+      display: inline-block;
+      width: 60px;
+      height: 34px;
+    }
+
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #475569;
+      transition: .4s;
+      border-radius: 34px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 26px;
+      width: 26px;
+      left: 4px;
+      bottom: 4px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider {
+      background-color: var(--secondary);
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(26px);
+    }
+
+    .yearly-discount {
+      background: #e11d48;
+      color: white;
+      font-size: 0.75rem;
+      font-weight: bold;
+      padding: 0.2rem 0.6rem;
+      border-radius: 4px;
+      text-transform: uppercase;
+    }
+
+    /* Pricing Grid */
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1.5rem;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 2rem 4rem;
+    }
+
+    .pricing-card {
+      background: var(--card-bg);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 16px;
+      padding: 2rem 1.5rem;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      transition: transform 0.3s, box-shadow 0.3s, border-color 0.3s;
+    }
+
+    .pricing-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+      border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    /* Highlighted / Popular Card */
+    .pricing-card.popular {
+      background: radial-gradient(circle at top right, #1e293b, #1a2d4e);
+      border: 2px solid var(--secondary);
+      transform: scale(1.03);
+    }
+
+    .pricing-card.popular:hover {
+      transform: scale(1.05) translateY(-5px);
+      box-shadow: 0 12px 40px rgba(0, 180, 166, 0.2);
+    }
+
+    .popular-badge {
+      position: absolute;
+      top: -15px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--secondary);
+      color: #0f172a;
+      font-weight: 800;
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      padding: 0.3rem 1rem;
+      border-radius: 9999px;
+      letter-spacing: 0.05em;
+    }
+
+    .plan-name {
+      font-size: 1.4rem;
+      font-weight: 700;
+      text-transform: capitalize;
+      margin-bottom: 0.5rem;
+    }
+
+    .plan-price-container {
+      margin-bottom: 1.5rem;
+    }
+
+    .plan-price {
+      font-size: 2.5rem;
+      font-weight: 800;
+      color: #ffffff;
+    }
+
+    .plan-period {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+
+    .plan-features {
+      list-style: none;
+      margin-bottom: 2rem;
+      flex-grow: 1;
+    }
+
+    .plan-features li {
+      margin-bottom: 0.75rem;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .plan-features li.included-feature {
+      color: #f1f5f9;
+    }
+
+    .plan-features li svg {
+      width: 18px;
+      height: 18px;
+      fill: var(--secondary);
+      flex-shrink: 0;
+    }
+
+    .btn-upgrade {
+      display: block;
+      width: 100%;
+      background: rgba(255, 255, 255, 0.1);
+      color: #ffffff;
+      text-align: center;
+      text-decoration: none;
+      padding: 0.8rem;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 1rem;
+      transition: all 0.2s;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .btn-upgrade:hover {
+      background: #ffffff;
+      color: var(--primary);
+    }
+
+    .popular .btn-upgrade {
+      background: var(--secondary);
+      color: #0f172a;
+      border: none;
+    }
+
+    .popular .btn-upgrade:hover {
+      background: #ffffff;
+      color: var(--primary);
+      box-shadow: 0 4px 12px rgba(255, 255, 255, 0.2);
+    }
+
+    /* Core Features List */
+    .core-features-section {
+      max-width: 1000px;
+      margin: 2rem auto 5rem;
+      padding: 2rem;
+      background: rgba(30, 41, 59, 0.5);
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      text-align: center;
+    }
+
+    .core-features-section h3 {
+      font-size: 1.8rem;
+      margin-bottom: 1.5rem;
+      color: #ffffff;
+    }
+
+    .core-features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .core-feature-item {
+      padding: 1rem;
+    }
+
+    .core-feature-item svg {
+      width: 32px;
+      height: 32px;
+      fill: var(--secondary);
+      margin-bottom: 0.5rem;
+    }
+
+    .core-feature-item p {
+      font-weight: 600;
+      font-size: 1rem;
+    }
+
+    /* FAQ Section */
+    .faq-section {
+      max-width: 800px;
+      margin: 0 auto 6rem;
+      padding: 0 2rem;
+    }
+
+    .faq-section h3 {
+      font-size: 2.2rem;
+      text-align: center;
+      margin-bottom: 3rem;
+      color: #ffffff;
+    }
+
+    .faq-item {
+      margin-bottom: 1.5rem;
+      background: var(--card-bg);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      padding: 1.5rem;
+    }
+
+    .faq-item h4 {
+      font-size: 1.15rem;
+      margin-bottom: 0.5rem;
+      color: var(--secondary);
+    }
+
+    .faq-item p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+
+    /* Footer */
+    footer {
+      background: #090d16;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      padding: 3rem 2rem;
+      text-align: center;
+      color: var(--text-muted);
+    }
+
+    footer p {
+      font-size: 0.95rem;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 1024px) {
+      .pricing-card.popular {
+        transform: scale(1);
+      }
+      .pricing-card.popular:hover {
+        transform: translateY(-5px);
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="nav-container">
+      <a href="/" class="logo">
+        <h1><span class="team">Team</span><span class="dekho">Dekho</span></h1>
+      </a>
+      <nav>
+        <a href="/">Home</a>
+        <a href="/pricing">Pricing</a>
+        <a href="/host/login">Login</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <section class="hero">
+    <h2>Choose the Perfect Plan for Your Team</h2>
+    <p>Flexible options designed for meetings of any size. Upgrade or downgrade anytime.</p>
+    <span class="tagline-badge">🚀 13x cheaper than Zoom</span>
+  </section>
+
+  <!-- Monthly/Yearly Toggle -->
+  <div class="toggle-container">
+    <span class="toggle-label">Monthly</span>
+    <label class="toggle-switch">
+      <input type="checkbox" id="pricing-toggle">
+      <span class="slider"></span>
+    </label>
+    <span class="toggle-label">Yearly</span>
+    <span class="yearly-discount">2 Months Free!</span>
+  </div>
+
+  <!-- Pricing Cards Grid -->
+  <div class="pricing-grid">
+
+    <!-- Plan 1: Free -->
+    <div class="pricing-card">
+      <div class="plan-name">Free</div>
+      <div class="plan-price-container">
+        <span class="plan-price" id="price-free">₹0</span>
+        <span class="plan-period" id="period-free">/month</span>
+      </div>
+      <ul class="plan-features">
+        <li class="included-feature">
+          <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
+          50 participants limit
+        </li>
+        <li class="included-feature">
+          <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
+          60 minutes max duration
+        </li>
+      </ul>
+      <a href="/host/login" class="btn-upgrade">Get Started</a>
+    </div>
+
+    <!-- Plan 2: Starter -->
+    <div class="pricing-card">
+      <div class="plan-name">Starter</div>
+      <div class="plan-price-container">
+        <span class="plan-price" id="price-starter">₹99</span>
+        <span class="plan-period" id="period-starter">/month</span>
+      </div>
+      <ul class="plan-features">
+        <li class="included-feature">
+          <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
+          100 participants limit
+        </li>
+        <li class="included-feature">
+          <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
+          90 minutes max duration
+        </li>
+      </ul>
+      <a href="/host/login" class="btn-upgrade">Upgrade</a>
+    </div>
+
+    <!-- Plan 3: Basic (Most Popular) -->
+    <div class="pricing-card popular">
+      <div class="popular-badge">Most Popular</div>
+      <div class="plan-name">Basic</div>
+      <div class="plan-price-container">
+        <span class="plan-price" id="price-basic">₹199</span>
+        <span class="plan-period" id="period-basic">/month</span>
+      </div>
+      <ul class="plan-features">
+        <li class="included-feature">
+          <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
+          250 participants limit
+        </li>
+        <li class="included-feature">
+          <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
+          3 hours max duration
+        </li>
+      </ul>
+      <a href="/host/login" class="btn-upgrade">Upgrade</a>
+    </div>
+
+    <!-- Plan 4: Pro -->
+    <div class="pricing-card">
+      <div class="plan-name">Pro</div>
+      <div class="plan-price-container">
+        <span class="plan-price" id="price-pro">₹299</span>
+        <span class="plan-period" id="period-pro">/month</span>
+      </div>
+      <ul class="plan-features">
+        <li class="included-feature">
+          <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
+          500 participants limit
+        </li>
+        <li class="included-feature">
+          <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
+          No time limit
+        </li>
+      </ul>
+      <a href="/host/login" class="btn-upgrade">Upgrade</a>
+    </div>
+
+    <!-- Plan 5: Business -->
+    <div class="pricing-card">
+      <div class="plan-name">Business</div>
+      <div class="plan-price-container">
+        <span class="plan-price" id="price-business">₹699</span>
+        <span class="plan-period" id="period-business">/month</span>
+      </div>
+      <ul class="plan-features">
+        <li class="included-feature">
+          <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
+          1000 participants limit
+        </li>
+        <li class="included-feature">
+          <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
+          No time limit
+        </li>
+        <li class="included-feature">
+          <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
+          Priority support
+        </li>
+      </ul>
+      <a href="/host/login" class="btn-upgrade">Upgrade</a>
+    </div>
+
+  </div>
+
+  <!-- Included in All Plans -->
+  <section class="core-features-section">
+    <h3>Every Plan Includes These Core Features</h3>
+    <div class="core-features-grid">
+      <div class="core-feature-item">
+        <svg viewBox="0 0 24 24"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg>
+        <p>Permanent Room URL</p>
+      </div>
+      <div class="core-feature-item">
+        <svg viewBox="0 0 24 24"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2z"/></svg>
+        <p>Schedule Meetings</p>
+      </div>
+      <div class="core-feature-item">
+        <svg viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+        <p>Meeting Passcode</p>
+      </div>
+      <div class="core-feature-item">
+        <svg viewBox="0 0 24 24"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg>
+        <p>HD Video, Screen share, Chat</p>
+      </div>
+      <div class="core-feature-item">
+        <svg viewBox="0 0 24 24"><path d="M21 3H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-9 12H4v-2h8v2zm8-4H4V9h16v2z"/></svg>
+        <p>Whiteboard & Collaborative Tools</p>
+      </div>
+      <div class="core-feature-item">
+        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+        <p>Unlimited Meetings</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ Section -->
+  <section class="faq-section">
+    <h3>Frequently Asked Questions</h3>
+    <div class="faq-item">
+      <h4>How does the monthly vs yearly billing work?</h4>
+      <p>Yearly billing gives you 2 months completely free! You pay for 10 months up front, and get access to your selected plan features for a full year.</p>
+    </div>
+    <div class="faq-item">
+      <h4>Can I upgrade or downgrade my plan at any time?</h4>
+      <p>Yes, absolutely. You can upgrade to a higher tier plan or downgrade to a lower tier directly from your dashboard anytime you like.</p>
+    </div>
+    <div class="faq-item">
+      <h4>Are there any hidden setup fees or contact lock-ins?</h4>
+      <p>No. Our plans are fully transparent, contract-free, and can be cancelled at any time without any penalties or fees.</p>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <p>&copy; 2026 TeamDekho by Sayog Kushwah, Indore</p>
+  </footer>
+
+  <!-- Dynamic pricing toggle script -->
+  <script>
+    const pricingToggle = document.getElementById('pricing-toggle');
+    
+    const prices = {
+      free: { monthly: '₹0', yearly: '₹0' },
+      starter: { monthly: '₹99', yearly: '₹990' },
+      basic: { monthly: '₹199', yearly: '₹1990' },
+      pro: { monthly: '₹299', yearly: '₹2990' },
+      business: { monthly: '₹699', yearly: '₹6990' }
+    };
+
+    pricingToggle.addEventListener('change', () => {
+      const isYearly = pricingToggle.checked;
+      
+      for (const [plan, pData] of Object.entries(prices)) {
+        const priceEl = document.getElementById(`price-${plan}`);
+        const periodEl = document.getElementById(`period-${plan}`);
+        
+        if (priceEl && periodEl) {
+          if (isYearly) {
+            priceEl.textContent = pData.yearly;
+            periodEl.textContent = '/year';
+          } else {
+            priceEl.textContent = pData.monthly;
+            periodEl.textContent = '/month';
+          }
+        }
+      }
+    });
+  </script>
+</body>
+</html>

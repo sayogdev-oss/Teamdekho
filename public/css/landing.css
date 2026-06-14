@@ -1128,12 +1128,32 @@ label {
     }
 }
 
+.spinner-logo {
+  width: 60px !important;
+  height: 60px !important;
+  min-width: 60px !important;
+  min-height: 60px !important;
+  max-width: 60px !important;
+  max-height: 60px !important;
+  object-fit: cover !important;
+  border-radius: 50% !important;
+  overflow: hidden !important;
+  display: block !important;
+  aspect-ratio: 1/1 !important;
+}
+
 .header-logo-image {
-    display: inline-block;
-    transition:
-        transform 0.3s,
-        filter 0.3s,
-        box-shadow 0.3s;
+  width: 48px !important;
+  height: 48px !important;
+  min-width: 48px !important;
+  min-height: 48px !important;
+  max-width: 48px !important;
+  max-height: 48px !important;
+  object-fit: cover !important;
+  border-radius: 50% !important;
+  overflow: hidden !important;
+  display: block !important;
+  aspect-ratio: 1/1 !important;
 }
 
 .header-logo-image:hover {
@@ -1188,8 +1208,9 @@ label {
 }
 .hero {
     text-align: center;
-    padding-top: 48px;
-    padding-bottom: 88px;
+    padding: 80px 0 8px;
+    position: relative;
+    overflow: hidden;
 }
 .hero-copy {
     position: relative;

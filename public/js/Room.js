@@ -12,7 +12,6 @@ if (location.href.substr(0, 5) !== 'https') location.href = 'https' + location.h
  * @license CodeCanyon: https://codecanyon.net/item/mirotalk-sfu-webrtc-realtime-video-conferences/40769970
  * @author  Miroslav Pejic - miroslav.pejic.85@gmail.com
  * @version 2.2.88
- *
  */
 
 // ####################################################
@@ -26,10 +25,14 @@ const parser = new UAParser(userAgent);
 const parserResult = parser.getResult();
 const deviceType = parserResult.device.type || 'desktop';
 const isMobileDevice = deviceType === 'mobile';
+window.isMobileDevice = isMobileDevice;
+globalThis.isMobileDevice = isMobileDevice;
 const isMobileSafari = isMobileDevice && parserResult.browser.name?.toLowerCase().includes('safari');
 const isTabletDevice = deviceType === 'tablet';
 const isIPadDevice = parserResult.device.model?.toLowerCase() === 'ipad';
 const isDesktopDevice = deviceType === 'desktop';
+window.isDesktopDevice = isDesktopDevice;
+globalThis.isDesktopDevice = isDesktopDevice;
 const isFirefox = parserResult.browser.name?.toLowerCase() === 'firefox';
 const thisInfo = getInfo();
 
@@ -62,7 +65,7 @@ let survey = {
 
 let redirect = {
     enabled: true,
-    url: '/newroom',
+    url: '/meeting-ended',
 };
 
 let recCodecs = null;
@@ -373,7 +376,7 @@ document.addEventListener('DOMContentLoaded', function () {
 // ####################################################
 
 function initCursorLightEffect() {
-    if (!videoMediaContainer || !isDesktopDevice) return;
+    if (!videoMediaContainer || !window.isDesktopDevice) return;
     videoMediaContainer.classList.add('mouse-light');
     videoMediaContainer.addEventListener('mousemove', function (e) {
         const rect = videoMediaContainer.getBoundingClientRect();
@@ -4361,7 +4364,9 @@ function handleRoomClientEvents() {
 // ####################################################
 
 function initLeaveMeeting() {
-    openURL('/newroom');
+    const urlParams = new URLSearchParams(window.location.search);
+    const room = urlParams.get('room');
+    openURL('/meeting-ended?type=ended&room=' + encodeURIComponent(room || '') + '&host=1');
 }
 
 async function leaveRoom(allowCancel = true, disconnectAll = false) {
@@ -4412,7 +4417,12 @@ function leaveFeedback(allowCancel, disconnectAll = false) {
 function redirectOnLeave(disconnectAll = false) {
     endRoomSession();
     rc.exitRoom(disconnectAll);
-    redirect && redirect.enabled ? openURL(redirect.url) : openURL('/newroom');
+    const urlParams = new URLSearchParams(window.location.search);
+    const room = urlParams.get('room');
+    const leaveUrl = '/meeting-ended?type=left&room=' + encodeURIComponent(room || '');
+    redirect && redirect.enabled
+        ? openURL(redirect.url + '?room=' + encodeURIComponent(room || ''))
+        : openURL(leaveUrl);
 }
 
 function userLog(icon, message, position = 'top-end', timer = 3000) {

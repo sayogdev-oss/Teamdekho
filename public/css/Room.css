@@ -6012,3 +6012,12 @@ z-index:
     - 8 send receive progress
     - 9 room/user emoji
 */
+
+.spinner-logo {
+  width: 60px !important;
+  height: 60px !important;
+  object-fit: cover !important;
+  border-radius: 50% !important;
+  overflow: hidden !important;
+  aspect-ratio: 1/1 !important;
+}

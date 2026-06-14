@@ -1,0 +1,1190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TeamDekho - Dashboard</title>
+  <link rel="shortcut icon" href="../images/logo.png">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    :root {
+      --primary: #0f1923;
+      --card-bg: #1a2535;
+      --border: #1e3a5f;
+      --teal: #00b4a6;
+      --teal-hover: #00968b;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --sidebar-w: 240px;
+    }
+    body {
+      font-family: 'Segoe UI', -apple-system, sans-serif;
+      background: var(--primary);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── TOP NAV ── */
+    .top-nav {
+      height: 56px;
+      background: var(--card-bg);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 24px;
+      gap: 16px;
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+    }
+    .nav-logo {
+      text-decoration: none;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .logo-img {
+      height: 40px;
+      width: 40px;
+      border-radius: 10px;
+      object-fit: cover;
+      flex-shrink: 0;
+    }
+    .logo-text {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.1;
+    }
+    .logo-name {
+      font-size: 1.05rem;
+      font-weight: 800;
+      letter-spacing: -0.3px;
+      color: #f8fafc;
+    }
+    .nav-logo span.dekho { color: var(--teal); }
+    .logo-tag {
+      font-size: 0.65rem;
+      color: #64748b;
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+    }
+    .nav-tabs {
+      display: flex;
+      gap: 4px;
+      flex: 1;
+    }
+    .nav-tab {
+      padding: 6px 16px;
+      border-radius: 6px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--muted);
+      cursor: pointer;
+      border: none;
+      background: none;
+      transition: all 0.2s;
+    }
+    .nav-tab:hover { color: var(--text); background: rgba(255,255,255,0.06); }
+    .nav-tab.active { color: var(--text); background: rgba(0,180,166,0.15); color: var(--teal); }
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .nav-avatar {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      border: 2px solid var(--teal);
+      object-fit: cover;
+      cursor: pointer;
+    }
+    .nav-name {
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .btn-logout {
+      background: rgba(255,255,255,0.08);
+      color: var(--text);
+      border: none;
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.2s;
+    }
+    .btn-logout:hover { background: #ef4444; color: #fff; }
+
+    /* ── MAIN LAYOUT ── */
+    .main-wrap {
+      margin-top: 56px;
+      display: flex;
+      min-height: calc(100vh - 56px);
+    }
+
+    /* ── PAGES ── */
+    .page { display: none; flex: 1; padding: 32px; }
+    .page.active { display: block; }
+
+    /* ── HOME PAGE ── */
+    .action-buttons {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 32px;
+    }
+    .action-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      padding: 20px 28px;
+      border-radius: 12px;
+      border: none;
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 0.88rem;
+      transition: transform 0.15s, box-shadow 0.15s;
+      min-width: 110px;
+    }
+    .action-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
+    .action-btn i { font-size: 1.6rem; }
+    .action-btn.new-meeting { background: var(--teal); color: #0f1923; }
+    .action-btn.join-btn { background: var(--card-bg); color: var(--text); border: 1px solid var(--border); }
+    .action-btn.schedule-btn { background: var(--card-bg); color: var(--text); border: 1px solid var(--border); }
+    .action-btn.share-btn { background: var(--card-bg); color: var(--text); border: 1px solid var(--border); }
+
+    /* ── PERSONAL ROOM CARD ── */
+    .pmr-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 24px 28px;
+      max-width: 680px;
+      margin-bottom: 28px;
+    }
+    .pmr-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .pmr-title i { color: var(--teal); }
+    .pmr-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .pmr-row:last-of-type { border-bottom: none; }
+    .pmr-label {
+      color: var(--muted);
+      font-size: 0.82rem;
+      min-width: 95px;
+    }
+    .pmr-value {
+      color: var(--text);
+      font-weight: 700;
+      font-family: monospace;
+      font-size: 1rem;
+      flex: 1;
+      word-break: break-all;
+    }
+    .pmr-link-val {
+      color: var(--teal);
+      font-size: 0.82rem;
+      font-family: monospace;
+      flex: 1;
+      word-break: break-all;
+      font-weight: 400;
+    }
+    .icon-btn {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 6px;
+      padding: 6px 10px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: background 0.2s;
+      white-space: nowrap;
+    }
+    .icon-btn:hover { background: rgba(255,255,255,0.14); }
+    .pmr-passcode-edit {
+      display: none;
+      gap: 8px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+    .pmr-passcode-edit input {
+      flex: 1;
+      min-width: 160px;
+      padding: 8px 12px;
+      border-radius: 7px;
+      border: 1px solid var(--border);
+      background: #0f1923;
+      color: var(--text);
+      font-size: 0.9rem;
+      outline: none;
+    }
+    .pmr-passcode-edit input:focus { border-color: var(--teal); }
+    .pmr-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 18px;
+    }
+    .btn-start {
+      background: var(--teal);
+      color: #0f1923;
+      border: none;
+      padding: 10px 24px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn-start:hover { background: var(--teal-hover); }
+    .btn-copy-invite {
+      background: var(--card-bg);
+      color: var(--teal);
+      border: 1px solid var(--teal);
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn-copy-invite:hover { background: rgba(0,180,166,0.1); }
+
+    /* ── JOIN MODAL ── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-box {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 32px;
+      width: 100%;
+      max-width: 420px;
+    }
+    .modal-title {
+      font-size: 1.2rem;
+      font-weight: 700;
+      margin-bottom: 20px;
+    }
+    .modal-field { margin-bottom: 16px; }
+    .modal-field label {
+      display: block;
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+    .modal-field input {
+      width: 100%;
+      background: #0f1923;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      outline: none;
+    }
+    .modal-field input:focus { border-color: var(--teal); }
+    .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+    .btn-primary {
+      flex: 1;
+      background: var(--teal);
+      color: #0f1923;
+      border: none;
+      padding: 12px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 0.95rem;
+      cursor: pointer;
+    }
+    .btn-secondary {
+      background: rgba(255,255,255,0.08);
+      color: var(--text);
+      border: none;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    /* ── SCHEDULE PAGE ── */
+    .page-header {
+      font-size: 1.3rem;
+      font-weight: 700;
+      margin-bottom: 24px;
+      color: var(--text);
+    }
+    .schedule-form-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 28px;
+      max-width: 560px;
+    }
+    .form-field { margin-bottom: 18px; }
+    .form-field label {
+      display: block;
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 7px;
+    }
+    .form-input {
+      width: 100%;
+      background: #0f1923;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .form-input:focus { border-color: var(--teal); }
+    .form-row { display: flex; gap: 14px; }
+    .form-row .form-field { flex: 1; }
+
+    /* Time Picker */
+    .time-picker-wrapper { position: relative; }
+    .time-picker-display {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: #0f1923;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      cursor: pointer;
+      user-select: none;
+      transition: border-color 0.2s;
+    }
+    .time-picker-display:hover { border-color: var(--teal); }
+    .time-part {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--text);
+      min-width: 26px;
+      text-align: center;
+    }
+    .time-colon { font-size: 1.05rem; font-weight: 700; color: var(--text); }
+    .time-ampm-disp {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--teal);
+      margin-left: 8px;
+      min-width: 30px;
+    }
+    .time-picker-dropdown {
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 0;
+      z-index: 999;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      display: none;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+      overflow: hidden;
+      min-width: 200px;
+    }
+    .time-picker-dropdown.open { display: flex; }
+    .time-col {
+      flex: 1;
+      max-height: 200px;
+      overflow-y: auto;
+      border-right: 1px solid var(--border);
+      scrollbar-width: thin;
+      scrollbar-color: var(--teal) #131f2e;
+    }
+    .time-col:last-child { border-right: none; }
+    .time-item {
+      padding: 10px 0;
+      text-align: center;
+      font-size: 0.95rem;
+      color: var(--muted);
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .time-item:hover { background: rgba(0,180,166,0.12); color: var(--text); }
+    .time-item.selected { background: var(--teal); color: #0f1923; font-weight: 700; }
+    .ampm-col {
+      display: flex;
+      flex-direction: column;
+      min-width: 56px;
+    }
+    .time-ampm-opt {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 16px 0;
+      transition: background 0.15s, color 0.15s;
+    }
+    .time-ampm-opt:hover { background: rgba(0,180,166,0.12); color: var(--text); }
+    .time-ampm-opt.selected { background: var(--teal); color: #0f1923; }
+
+    .btn-schedule {
+      width: 100%;
+      background: var(--teal);
+      color: #0f1923;
+      border: none;
+      padding: 13px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 1rem;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: background 0.2s;
+    }
+    .btn-schedule:hover { background: var(--teal-hover); }
+
+    /* Schedule result */
+    .schedule-result {
+      display: none;
+      background: rgba(0,180,166,0.08);
+      border: 1px solid rgba(0,180,166,0.3);
+      border-radius: 12px;
+      padding: 20px;
+      margin-top: 20px;
+    }
+    .schedule-result.show { display: block; }
+    .result-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+      font-size: 0.88rem;
+    }
+    .result-label { color: var(--muted); min-width: 90px; }
+    .result-value { color: var(--text); font-weight: 600; flex: 1; word-break: break-all; }
+    .result-actions { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+    .btn-whatsapp {
+      background: #1a3a28;
+      color: #25D366;
+      border: 1px solid #25D366;
+      padding: 9px 16px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+    .btn-copy-result {
+      background: var(--card-bg);
+      color: var(--teal);
+      border: 1px solid var(--teal);
+      padding: 9px 16px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+    .btn-start-now {
+      background: var(--teal);
+      color: #0f1923;
+      border: none;
+      padding: 9px 20px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+
+    /* ── MEETINGS PAGE ── */
+    .meetings-list { max-width: 760px; }
+    .meeting-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px 22px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      transition: border-color 0.2s;
+    }
+    .meeting-card:hover { border-color: rgba(0,180,166,0.3); }
+    .meeting-icon {
+      width: 44px; height: 44px;
+      border-radius: 10px;
+      background: rgba(0,180,166,0.12);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .meeting-icon i { color: var(--teal); font-size: 1.1rem; }
+    .meeting-info { flex: 1; }
+    .meeting-topic {
+      font-weight: 700;
+      font-size: 0.95rem;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+    .meeting-meta {
+      font-size: 0.8rem;
+      color: var(--muted);
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .meeting-meta span { display: flex; align-items: center; gap: 4px; }
+    .meeting-actions { display: flex; gap: 8px; }
+    .btn-rejoin {
+      background: var(--teal);
+      color: #0f1923;
+      border: none;
+      padding: 7px 16px;
+      border-radius: 7px;
+      font-weight: 700;
+      font-size: 0.82rem;
+      cursor: pointer;
+    }
+    .btn-share-meeting {
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 7px 14px;
+      border-radius: 7px;
+      font-weight: 600;
+      font-size: 0.82rem;
+      cursor: pointer;
+    }
+    .btn-share-meeting:hover { border-color: var(--teal); color: var(--teal); }
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--muted);
+    }
+    .empty-state i { font-size: 3rem; margin-bottom: 16px; opacity: 0.4; }
+    .empty-state p { font-size: 0.95rem; }
+
+    /* ── PLAN BAR ── */
+    .plan-bar {
+      background: var(--card-bg);
+      border-top: 1px solid var(--border);
+      padding: 12px 32px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      z-index: 50;
+    }
+    .plan-badge {
+      background: linear-gradient(135deg, var(--teal), #1a2d4e);
+      color: #fff;
+      padding: 3px 12px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+    .plan-info { color: var(--muted); font-size: 0.82rem; flex: 1; }
+    .plan-upgrade {
+      color: var(--teal);
+      font-size: 0.82rem;
+      font-weight: 700;
+      text-decoration: none;
+      cursor: pointer;
+      background: none;
+      border: none;
+    }
+    .plan-upgrade:hover { text-decoration: underline; }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 640px) {
+      .page { padding: 20px 16px; }
+      .action-buttons { gap: 8px; }
+      .action-btn { padding: 16px 14px; min-width: 80px; font-size: 0.78rem; }
+      .action-btn i { font-size: 1.3rem; }
+      .nav-name { display: none; }
+      .form-row { flex-direction: column; gap: 0; }
+      .pmr-card { padding: 16px; }
+      .meeting-card { flex-wrap: wrap; }
+      .meeting-actions { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- TOP NAV -->
+  <nav class="top-nav">
+    <a href="/" class="nav-logo">
+      <img src="../images/logo.png" alt="TeamDekho" class="logo-img" onerror="this.style.display='none'">
+      <div class="logo-text">
+        <span class="logo-name">Team<span class="dekho">Dekho</span></span>
+        <span class="logo-tag">HD Video Meetings</span>
+      </div>
+    </a>
+    <div class="nav-tabs">
+      <button class="nav-tab active" onclick="showPage('home',this)">
+        <i class="fas fa-home"></i> Home
+      </button>
+      <button class="nav-tab" onclick="showPage('schedule',this)">
+        <i class="fas fa-calendar"></i> Schedule
+      </button>
+      <button class="nav-tab" onclick="showPage('meetings',this)">
+        <i class="fas fa-clock"></i> Meetings
+      </button>
+    </div>
+    <div class="nav-right">
+      <img id="nav-avatar" class="nav-avatar" src="https://ui-avatars.com/api/?name=Host&background=00b4a6&color=fff&size=32" alt="Avatar">
+      <span id="nav-name" class="nav-name">Host</span>
+      <a href="/auth/logout" class="btn-logout">Logout</a>
+    </div>
+  </nav>
+
+  <!-- MAIN -->
+  <div class="main-wrap">
+
+    <!-- HOME PAGE -->
+    <div class="page active" id="page-home">
+
+      <!-- Action Buttons (Zoom style) -->
+      <div class="action-buttons">
+        <button class="action-btn new-meeting" onclick="startPersonalMeeting()">
+          <i class="fas fa-video"></i>
+          New Meeting
+        </button>
+        <button class="action-btn join-btn" onclick="openJoinModal()">
+          <i class="fas fa-sign-in-alt"></i>
+          Join
+        </button>
+        <button class="action-btn schedule-btn" onclick="showPage('schedule', document.querySelector('[onclick*=schedule]'))">
+          <i class="fas fa-calendar-plus"></i>
+          Schedule
+        </button>
+        <button class="action-btn share-btn" onclick="showPage('meetings', document.querySelector('[onclick*=meetings]'))">
+          <i class="fas fa-clock-rotate-left"></i>
+          Meetings
+        </button>
+      </div>
+
+      <!-- Personal Meeting Room -->
+      <div class="pmr-card">
+        <div class="pmr-title">
+          <i class="fas fa-user-circle"></i>
+          Personal Meeting Room
+        </div>
+        <div class="pmr-row">
+          <span class="pmr-label">Meeting ID</span>
+          <span class="pmr-value" id="pmr-meeting-id">— — —</span>
+          <button class="icon-btn" id="pmr-copy-id" title="Copy ID">
+            <i class="fas fa-copy"></i>
+          </button>
+        </div>
+        <div class="pmr-row">
+          <span class="pmr-label">Passcode</span>
+          <span class="pmr-value" id="pmr-passcode">No Passcode</span>
+          <button class="icon-btn" id="pmr-show-passcode" title="Show/Hide">
+            <i class="fas fa-eye"></i>
+          </button>
+          <button class="icon-btn" id="pmr-edit-passcode" title="Edit">
+            <i class="fas fa-pencil"></i>
+          </button>
+        </div>
+        <div class="pmr-row">
+          <span class="pmr-label">Invite Link</span>
+          <span class="pmr-link-val" id="pmr-link">—</span>
+          <button class="icon-btn" id="pmr-copy-link" title="Copy Link">
+            <i class="fas fa-copy"></i>
+          </button>
+        </div>
+        <div class="pmr-passcode-edit" id="pmr-passcode-edit">
+          <input type="text" id="pmr-passcode-input" placeholder="4-10 alphanumeric, blank to remove" maxlength="10" autocomplete="new-password">
+          <button class="btn-start" id="pmr-save-passcode">Save</button>
+          <button class="icon-btn" id="pmr-cancel-passcode">Cancel</button>
+        </div>
+        <div class="pmr-actions">
+          <button class="btn-start" id="pmr-start-meeting">
+            <i class="fas fa-video"></i> Start Meeting
+          </button>
+          <button class="btn-copy-invite" id="pmr-copy-invite">
+            <i class="fas fa-link"></i> Copy Invite Link
+          </button>
+        </div>
+      </div>
+
+    </div><!-- /home -->
+
+    <!-- SCHEDULE PAGE -->
+    <div class="page" id="page-schedule">
+      <div class="page-header">Schedule a Meeting</div>
+      <div class="schedule-form-card">
+        <div class="form-field">
+          <label>Meeting Topic</label>
+          <input type="text" class="form-input" id="sch-topic" placeholder="e.g. RCM Weekly Training" autocomplete="off">
+        </div>
+        <div class="form-row">
+          <div class="form-field">
+            <label>Date</label>
+            <input type="date" class="form-input" id="sch-date">
+          </div>
+          <div class="form-field">
+            <label>Time</label>
+            <div class="time-picker-wrapper">
+              <div class="time-picker-display" id="tp-display">
+                <span class="time-part" id="tp-h">12</span>
+                <span class="time-colon">:</span>
+                <span class="time-part" id="tp-m">00</span>
+                <span class="time-ampm-disp" id="tp-ap">PM</span>
+              </div>
+              <div class="time-picker-dropdown" id="tp-dropdown">
+                <div class="time-col" id="tp-hour-col"></div>
+                <div class="time-col" id="tp-min-col"></div>
+                <div class="time-col ampm-col">
+                  <div class="time-ampm-opt" id="tp-am">AM</div>
+                  <div class="time-ampm-opt selected" id="tp-pm">PM</div>
+                </div>
+              </div>
+              <input type="hidden" id="sch-time">
+            </div>
+          </div>
+        </div>
+        <div class="form-field">
+          <label>Passcode (Optional)</label>
+          <input type="text" class="form-input" id="sch-passcode" placeholder="Leave blank for no passcode" autocomplete="new-password" maxlength="10">
+        </div>
+        <button class="btn-schedule" id="sch-submit">
+          <i class="fas fa-calendar-check"></i> Schedule Meeting
+        </button>
+
+        <!-- Result -->
+        <div class="schedule-result" id="sch-result">
+          <div class="result-row">
+            <span class="result-label">Topic</span>
+            <span class="result-value" id="res-topic">—</span>
+          </div>
+          <div class="result-row">
+            <span class="result-label">Meeting ID</span>
+            <span class="result-value" id="res-id">—</span>
+          </div>
+          <div class="result-row">
+            <span class="result-label">Date & Time</span>
+            <span class="result-value" id="res-dt">—</span>
+          </div>
+          <div class="result-row">
+            <span class="result-label">Passcode</span>
+            <span class="result-value" id="res-pc">None</span>
+          </div>
+          <div class="result-row">
+            <span class="result-label">Invite Link</span>
+            <span class="result-value" id="res-link">—</span>
+          </div>
+          <div class="result-actions">
+            <button class="btn-whatsapp" id="res-whatsapp">
+              <i class="fab fa-whatsapp"></i> Share on WhatsApp
+            </button>
+            <button class="btn-copy-result" id="res-copy">
+              <i class="fas fa-copy"></i> Copy Invite
+            </button>
+            <button class="btn-start-now" id="res-start">
+              Start Now
+            </button>
+          </div>
+        </div>
+      </div>
+    </div><!-- /schedule -->
+
+    <!-- MEETINGS PAGE -->
+    <div class="page" id="page-meetings">
+      <div class="page-header">My Meetings</div>
+      <div class="meetings-list" id="meetings-list">
+        <div class="empty-state">
+          <i class="fas fa-calendar-xmark"></i>
+          <p>No meetings yet. Start or schedule one!</p>
+        </div>
+      </div>
+    </div><!-- /meetings -->
+
+  </div><!-- /main-wrap -->
+
+  <!-- JOIN MODAL -->
+  <div class="modal-overlay" id="join-modal">
+    <div class="modal-box">
+      <div class="modal-title">Join a Meeting</div>
+      <div class="modal-field">
+        <label>Meeting ID</label>
+        <input type="text" id="join-meeting-id" placeholder="Enter Meeting ID" autocomplete="off">
+      </div>
+      <div class="modal-field">
+        <label>Passcode <span style="color:var(--muted);font-weight:400;">(if required)</span></label>
+        <input type="text" id="join-passcode" placeholder="Enter passcode" autocomplete="off">
+      </div>
+      <div class="modal-actions">
+        <button class="btn-secondary" onclick="closeJoinModal()">Cancel</button>
+        <button class="btn-primary" onclick="joinMeeting()">Join</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PLAN BAR -->
+  <div class="plan-bar">
+    <span class="plan-badge" id="plan-badge">FREE</span>
+    <span class="plan-info" id="plan-info">50 participants · 60 min</span>
+    <button class="plan-upgrade" onclick="window.location.href='/pricing'">Upgrade →</button>
+  </div>
+
+  <script>
+  // ── PAGE NAVIGATION ──────────────────────────────────
+  function showPage(name, btn) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('page-' + name).classList.add('active');
+    if (btn) btn.classList.add('active');
+    else {
+      document.querySelectorAll('.nav-tab').forEach(t => {
+        if (t.getAttribute('onclick') && t.getAttribute('onclick').includes(name)) {
+          t.classList.add('active');
+        }
+      });
+    }
+    if (name === 'meetings') loadMeetings();
+  }
+
+  // ── JOIN MODAL ───────────────────────────────────────
+  function openJoinModal() {
+    document.getElementById('join-modal').classList.add('open');
+    document.getElementById('join-meeting-id').focus();
+  }
+  function closeJoinModal() {
+    document.getElementById('join-modal').classList.remove('open');
+  }
+  document.getElementById('join-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeJoinModal();
+  });
+  function joinMeeting() {
+    const mid = document.getElementById('join-meeting-id').value.trim();
+    const pwd = document.getElementById('join-passcode').value.trim();
+    if (!mid) { document.getElementById('join-meeting-id').style.borderColor = '#ef4444'; return; }
+    fetch('/api/meetings/info/' + encodeURIComponent(mid))
+      .then(r => r.json())
+      .then(data => {
+        const room = data.roomSlug || mid;
+        let url = '/join/?room=' + encodeURIComponent(room);
+        if (pwd) url += '&password=' + encodeURIComponent(pwd);
+        window.location.href = url;
+      })
+      .catch(() => {
+        let url = '/join/?room=' + encodeURIComponent(mid.toLowerCase().replace(/\s+/g,'-'));
+        if (pwd) url += '&password=' + encodeURIComponent(pwd);
+        window.location.href = url;
+      });
+  }
+
+  // ── TIME PICKER ──────────────────────────────────────
+  (function() {
+    const display = document.getElementById('tp-display');
+    const dropdown = document.getElementById('tp-dropdown');
+    const hourCol = document.getElementById('tp-hour-col');
+    const minCol = document.getElementById('tp-min-col');
+    const tpH = document.getElementById('tp-h');
+    const tpM = document.getElementById('tp-m');
+    const tpAp = document.getElementById('tp-ap');
+    const hidden = document.getElementById('sch-time');
+    const optAm = document.getElementById('tp-am');
+    const optPm = document.getElementById('tp-pm');
+    let selH = 12, selM = 0, selAp = 'PM';
+
+    function pad(n) { return String(n).padStart(2,'0'); }
+    function sync() {
+      let h = selH % 12;
+      if (selAp === 'PM') h += 12;
+      if (h === 24) h = 12;
+      if (h === 12 && selAp === 'AM') h = 0;
+      hidden.value = pad(h) + ':' + pad(selM);
+      tpH.textContent = pad(selH);
+      tpM.textContent = pad(selM);
+      tpAp.textContent = selAp;
+    }
+
+    for (let i = 1; i <= 12; i++) {
+      const el = document.createElement('div');
+      el.className = 'time-item' + (i === selH ? ' selected' : '');
+      el.textContent = pad(i);
+      el.addEventListener('click', () => {
+        selH = i;
+        hourCol.querySelectorAll('.time-item').forEach(x => x.classList.remove('selected'));
+        el.classList.add('selected');
+        sync();
+      });
+      hourCol.appendChild(el);
+    }
+
+    for (let i = 0; i < 60; i += 5) {
+      const el = document.createElement('div');
+      el.className = 'time-item' + (i === selM ? ' selected' : '');
+      el.textContent = pad(i);
+      el.addEventListener('click', () => {
+        selM = i;
+        minCol.querySelectorAll('.time-item').forEach(x => x.classList.remove('selected'));
+        el.classList.add('selected');
+        sync();
+      });
+      minCol.appendChild(el);
+    }
+
+    [optAm, optPm].forEach(opt => {
+      opt.addEventListener('click', () => {
+        selAp = opt === optAm ? 'AM' : 'PM';
+        optAm.classList.toggle('selected', selAp === 'AM');
+        optPm.classList.toggle('selected', selAp === 'PM');
+        sync();
+      });
+    });
+
+    display.addEventListener('click', e => {
+      e.stopPropagation();
+      dropdown.classList.toggle('open');
+    });
+    document.addEventListener('click', () => dropdown.classList.remove('open'));
+
+    const now = new Date();
+    let h = now.getHours() + 1;
+    selAp = h >= 12 ? 'PM' : 'AM';
+    selH = h % 12 || 12;
+    selM = 0;
+    optAm.classList.toggle('selected', selAp === 'AM');
+    optPm.classList.toggle('selected', selAp === 'PM');
+    hourCol.querySelectorAll('.time-item').forEach(el => {
+      if (parseInt(el.textContent) === selH) el.classList.add('selected');
+    });
+    sync();
+
+    // Default date
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('sch-date').value = today;
+  })();
+
+  // ── SCHEDULE SUBMIT ──────────────────────────────────
+  document.getElementById('sch-submit').addEventListener('click', () => {
+    const topic = document.getElementById('sch-topic').value.trim();
+    const date = document.getElementById('sch-date').value;
+    const time = document.getElementById('sch-time').value;
+    const passcode = document.getElementById('sch-passcode').value.trim() || null;
+
+    if (!topic || !date || !time) {
+      alert('Please fill Topic, Date and Time');
+      return;
+    }
+
+    const scheduledAt = date + 'T' + time + ':00';
+
+    fetch('/api/meetings/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ topic, passcode, scheduled_at: scheduledAt })
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (!data.success) { alert(data.error || 'Failed'); return; }
+      const dt = new Date(scheduledAt).toLocaleString('en-IN', {
+        weekday:'short', day:'numeric', month:'short',
+        year:'numeric', hour:'2-digit', minute:'2-digit', hour12:true
+      });
+      const link = window.location.origin + '/join/?room=' + encodeURIComponent(data.roomSlug) + (passcode ? '&password=' + encodeURIComponent(passcode) : '');
+
+      document.getElementById('res-topic').textContent = topic;
+      document.getElementById('res-id').textContent = data.meetingId;
+      document.getElementById('res-dt').textContent = dt;
+      document.getElementById('res-pc').textContent = passcode || 'None';
+      document.getElementById('res-link').textContent = link;
+
+      document.getElementById('res-whatsapp').onclick = () => {
+        const msg = `*TeamDekho Meeting*\n\nTopic: ${topic}\nDate & Time: ${dt}\nMeeting ID: ${data.meetingId}\n${passcode ? 'Passcode: ' + passcode + '\n' : ''}Join: ${link}`;
+        window.open('https://wa.me/?text=' + encodeURIComponent(msg));
+      };
+      document.getElementById('res-copy').onclick = () => {
+        const msg = `TeamDekho Meeting\nTopic: ${topic}\nDate & Time: ${dt}\nMeeting ID: ${data.meetingId}\n${passcode ? 'Passcode: ' + passcode + '\n' : ''}Join: ${link}`;
+        navigator.clipboard.writeText(msg);
+        document.getElementById('res-copy').textContent = '✅ Copied';
+        setTimeout(() => document.getElementById('res-copy').innerHTML = '<i class="fas fa-copy"></i> Copy Invite', 1500);
+      };
+      document.getElementById('res-start').onclick = () => { window.location.href = link; };
+      document.getElementById('sch-result').classList.add('show');
+    })
+    .catch(() => alert('Failed to schedule meeting'));
+  });
+
+  // ── MEETINGS LIST ────────────────────────────────────
+  function loadMeetings() {
+    const list = document.getElementById('meetings-list');
+    fetch('/api/meetings/my')
+      .then(r => r.json())
+      .then(data => {
+        const meetings = data.meetings || [];
+        if (meetings.length === 0) {
+          list.innerHTML = '<div class="empty-state"><i class="fas fa-calendar-xmark"></i><p>No meetings yet. Start or schedule one!</p></div>';
+          return;
+        }
+        list.innerHTML = meetings.map(m => {
+          const dt = new Date(m.started_at || m.created_at).toLocaleString('en-IN', {
+            day:'numeric', month:'short', year:'numeric',
+            hour:'2-digit', minute:'2-digit', hour12:true
+          });
+          const dur = m.duration_seconds ? Math.round(m.duration_seconds/60) + ' min' : '—';
+          const link = window.location.origin + '/join/?room=' + encodeURIComponent(m.room_slug);
+          return `
+            <div class="meeting-card">
+              <div class="meeting-icon"><i class="fas fa-video"></i></div>
+              <div class="meeting-info">
+                <div class="meeting-topic">${m.topic || 'Instant Meeting'}</div>
+                <div class="meeting-meta">
+                  <span><i class="fas fa-calendar"></i> ${dt}</span>
+                  <span><i class="fas fa-clock"></i> ${dur}</span>
+                  <span><i class="fas fa-users"></i> ${m.total_participants || 0} joined</span>
+                </div>
+              </div>
+              <div class="meeting-actions">
+                <button class="btn-rejoin" onclick="window.location.href='${link}'">
+                  <i class="fas fa-redo"></i> Start
+                </button>
+                <button class="btn-share-meeting" onclick="navigator.clipboard.writeText('${link}');this.textContent='✅ Copied';setTimeout(()=>this.innerHTML='<i class=\\'fas fa-share-alt\\'></i> Share',1500)">
+                  <i class="fas fa-share-alt"></i> Share
+                </button>
+              </div>
+            </div>`;
+        }).join('');
+      })
+      .catch(() => {
+        list.innerHTML = '<div class="empty-state"><i class="fas fa-circle-exclamation"></i><p>Failed to load meetings.</p></div>';
+      });
+  }
+
+  // ── PERSONAL MEETING ROOM ─────────────────────────────
+  function startPersonalMeeting() {
+    const link = document.getElementById('pmr-link').getAttribute('data-full-link');
+    if (link) window.location.href = link;
+  }
+
+  // ── LOAD USER DATA ────────────────────────────────────
+  fetch('/api/host/me')
+    .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+    .then(user => {
+      // Nav
+      document.getElementById('nav-name').textContent = user.name;
+      document.getElementById('nav-avatar').src = user.avatar
+        ? '/api/avatar?url=' + encodeURIComponent(user.avatar)
+        : 'https://ui-avatars.com/api/?name=' + encodeURIComponent(user.name) + '&background=00b4a6&color=fff&size=32';
+      document.getElementById('nav-avatar').onerror = function() {
+        this.src = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(user.name) + '&background=00b4a6&color=fff&size=32';
+      };
+
+      // Plan bar
+      document.getElementById('plan-badge').textContent = (user.plan || 'FREE').toUpperCase();
+      document.getElementById('plan-info').textContent =
+        (user.max_participants || 50) + ' participants · ' +
+        (user.max_duration_minutes ? user.max_duration_minutes + ' min' : 'No limit');
+
+      // PMR card
+      if (user.personal_meeting_id) {
+        const mid = user.personal_meeting_id;
+        const fmt = mid.slice(0,3) + ' ' + mid.slice(3,7) + ' ' + mid.slice(7);
+        document.getElementById('pmr-meeting-id').textContent = fmt;
+
+        let currentPasscode = user.passcode || null;
+        let passcodeVisible = false;
+        const passcodeEl = document.getElementById('pmr-passcode');
+        const linkEl = document.getElementById('pmr-link');
+
+        function buildLink() {
+          let link = user.personal_meeting_link;
+          if (currentPasscode) link += '&password=' + encodeURIComponent(currentPasscode);
+          linkEl.textContent = link;
+          linkEl.setAttribute('data-full-link', link);
+          return link;
+        }
+        buildLink();
+
+        function renderPasscode() {
+          passcodeEl.textContent = !currentPasscode ? 'No Passcode' : (passcodeVisible ? currentPasscode : '••••••');
+        }
+        renderPasscode();
+
+        document.getElementById('pmr-show-passcode').onclick = () => {
+          passcodeVisible = !passcodeVisible; renderPasscode();
+        };
+        document.getElementById('pmr-copy-id').onclick = () => {
+          navigator.clipboard.writeText(mid);
+          const b = document.getElementById('pmr-copy-id');
+          b.innerHTML = '<i class="fas fa-check"></i>';
+          setTimeout(() => b.innerHTML = '<i class="fas fa-copy"></i>', 1500);
+        };
+        document.getElementById('pmr-copy-link').onclick = () => {
+          navigator.clipboard.writeText(linkEl.getAttribute('data-full-link') || buildLink());
+          const b = document.getElementById('pmr-copy-link');
+          b.innerHTML = '<i class="fas fa-check"></i>';
+          setTimeout(() => b.innerHTML = '<i class="fas fa-copy"></i>', 1500);
+        };
+        document.getElementById('pmr-copy-invite').onclick = () => {
+          navigator.clipboard.writeText(linkEl.getAttribute('data-full-link') || buildLink());
+          const b = document.getElementById('pmr-copy-invite');
+          b.innerHTML = '<i class="fas fa-check"></i> Copied!';
+          setTimeout(() => b.innerHTML = '<i class="fas fa-link"></i> Copy Invite Link', 1500);
+        };
+        document.getElementById('pmr-edit-passcode').onclick = () => {
+          const box = document.getElementById('pmr-passcode-edit');
+          document.getElementById('pmr-passcode-input').value = currentPasscode || '';
+          box.style.display = box.style.display === 'flex' ? 'none' : 'flex';
+        };
+        document.getElementById('pmr-cancel-passcode').onclick = () => {
+          document.getElementById('pmr-passcode-edit').style.display = 'none';
+        };
+        document.getElementById('pmr-save-passcode').onclick = () => {
+          const val = document.getElementById('pmr-passcode-input').value.trim();
+          fetch('/api/host/passcode', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ passcode: val })
+          })
+          .then(r => r.json())
+          .then(res => {
+            if (res.success) {
+              currentPasscode = res.passcode;
+              renderPasscode(); buildLink();
+              document.getElementById('pmr-passcode-edit').style.display = 'none';
+            } else alert(res.error || 'Failed');
+          })
+          .catch(() => alert('Failed to update passcode'));
+        };
+        document.getElementById('pmr-start-meeting').onclick = startPersonalMeeting;
+      }
+    })
+    .catch(() => { window.location.href = '/host/login'; });
+  </script>
+
+</body>
+</html>

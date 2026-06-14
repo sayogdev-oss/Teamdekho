@@ -202,8 +202,6 @@ if (roomName) {
         roomName.value = window.sessionStorage.roomID;
         window.sessionStorage.roomID = false;
         joinRoom();
-    } else {
-        shuffleText(roomName, txt);
     }
 
     roomName.onkeyup = (e) => {
@@ -269,15 +267,15 @@ function getUUID4() {
 }
 
 function joinRoom() {
-    const roomName = filterXSS(document.getElementById('roomName').value).trim().replace(/\s+/g, '-');
+    const raw = filterXSS(document.getElementById('roomName').value).trim();
+    const roomName = raw.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9\-]/g, '');
     const roomValid = isValidRoomName(roomName);
 
     if (!roomValid) {
-        shuffleText(document.getElementById('roomName'), txt);
+        document.getElementById('roomName').focus();
         return;
     }
 
-    //window.location.href = '/join/' + roomName;
     window.location.href = '/join/?room=' + roomName;
     window.localStorage.lastRoom = roomName;
 }

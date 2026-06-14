@@ -3,9 +3,9 @@
     <head>
         <!-- Title and Icon -->
 
-        <title id="title">MiroTalk SFU - Room Video Calls, Messaging and Screen Sharing.</title>
-        <link id="icon" rel="shortcut icon" href="../images/logo.svg" />
-        <link id="appleTouchIcon" rel="apple-touch-icon" href="../images/logo.svg" />
+        <title id="title">TeamDekho - Room Video Calls, Messaging and Screen Sharing.</title>
+        <link id="icon" rel="shortcut icon" href="../images/logo.png" />
+        <link id="appleTouchIcon" rel="apple-touch-icon" href="../images/logo.png" />
 
         <!-- Meta Information -->
 
@@ -18,7 +18,7 @@
         <meta
             id="description"
             name="description"
-            content="MiroTalk SFU powered by WebRTC and mediasoup, Real-time Simple Secure Fast video calls, messaging and screen sharing capabilities in the browser."
+            content="TeamDekho powered by WebRTC and mediasoup, Real-time Simple Secure Fast video calls, messaging and screen sharing capabilities in the browser."
         />
 
         <!-- https://ogp.me -->
@@ -171,7 +171,7 @@
         <div id="loadingDiv" class="center" role="status" aria-live="polite" aria-busy="true">
             <div class="loading-spinner" aria-hidden="true">
                 <div class="spinner-ring"></div>
-                <img class="spinner-logo" src="../images/logo.svg" alt="" />
+                <img class="spinner-logo" src="../images/logo.png" alt="" />
             </div>
             <h1 id="loadingTitle">Loading</h1>
             <p id="loadingMessage" class="loading-message">
@@ -187,7 +187,7 @@
                     <div id="initVideoLoader" class="init-video-loader">
                         <div class="loading-spinner">
                             <div class="spinner-ring"></div>
-                            <img class="spinner-logo" src="../images/logo.svg" alt="logo" />
+                            <img class="spinner-logo" src="../images/logo.png" alt="logo" />
                         </div>
                     </div>
                     <div id="imageGrid" class="image-grid fadein"></div>
@@ -253,6 +253,11 @@
         </div>
 
         <div id="bottomButtons" class="fadein">
+            <!-- TeamDekho Share Button -->
+            <button id="tdShareButton" onclick="document.getElementById('shareButton').click()" title="Invite People" style="background:none;border:none;color:white;cursor:pointer;padding:6px 10px;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:0.68rem;opacity:0.85;transition:opacity 0.2s;min-width:48px;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.85'">
+              <i class="fas fa-user-plus" style="font-size:1.25rem;"></i>
+              <span>Invite</span>
+            </button>
             <div id="startAudioSplit" class="split-btn">
                 <button id="startAudioButton" class="hidden"><i class="fas fa-microphone-slash"></i></button>
                 <button id="stopAudioButton" class="hidden"><i class="fas fa-microphone"></i></button>
@@ -333,11 +338,14 @@
                         <!-- SHARING -->
                         <div
                             class="device-menu-header extra-menu-group"
-                            data-buttons="shareButton,fileShareExtraButton"
+                            data-buttons="shareButton,fileShareExtraButton,tdInviteMenuBtn"
                         >
                             SHARING
                         </div>
-                        <button id="shareButton" class="hidden"><i class="fas fa-share-alt"></i> Share Room</button>
+                        <button id="tdInviteMenuBtn" onclick="document.getElementById('shareButton').click()" style="color:#00b4a6;font-weight:600;">
+                            <i class="fas fa-user-plus"></i> Invite People
+                        </button>
+                        <button id="shareButton"><i class="fas fa-share-alt"></i> Share</button>
                         <button id="fileShareExtraButton" class="hidden">
                             <i class="fas fa-folder-open"></i> File sharing
                         </button>
@@ -1186,7 +1194,7 @@
                             <div id="avatarVideoAIPreviewContainer" class="avatar-preview-container">
                                 <div id="avatarVideoAISpinner" class="loading-spinner">
                                     <div class="spinner-ring"></div>
-                                    <img class="spinner-logo" src="../images/logo.svg" alt="logo" />
+                                    <img class="spinner-logo" src="../images/logo.png" alt="logo" />
                                 </div>
                                 <img id="avatarVideoAIPreview" src="" alt="Avatar Preview" class="hidden" />
                             </div>
@@ -2825,7 +2833,7 @@ Note</textarea
         <template id="videoLoaderTemplate">
             <div class="loading-spinner">
                 <div class="spinner-ring"></div>
-                <img class="spinner-logo" src="../images/logo.svg" alt="logo" />
+                <img class="spinner-logo" src="../images/logo.png" alt="logo" />
             </div>
         </template>
 
@@ -2835,3 +2843,4 @@ Note</textarea
         </template>
     </body>
 </html>
+

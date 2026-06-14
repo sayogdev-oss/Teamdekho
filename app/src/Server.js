@@ -56,12 +56,12 @@ dev dependencies: {
 */
 
 /**
- * MiroTalk SFU - Server component
+ * TeamDekho SFU - Server component
  *
- * @link    GitHub: https://github.com/miroslavpejic85/mirotalksfu
- * @link    Official Live demo: https://sfu.mirotalk.com
+ * @link    GitHub: https://github.com/teamdekho/teamdekho
+ * @link    Official Live demo: https://sfu.teamdekho.com
  * @license For open source use: AGPLv3
- * @license For commercial or closed source, contact us at license.mirotalk@gmail.com or purchase directly via CodeCanyon
+ * @license For commercial or closed source, contact us at license.teamdekho@gmail.com or purchase directly via CodeCanyon
  * @license CodeCanyon: https://codecanyon.net/item/mirotalk-sfu-webrtc-realtime-video-conferences/40769970
  * @author  Miroslav Pejic - miroslav.pejic.85@gmail.com
  * @version 2.2.88
@@ -69,6 +69,12 @@ dev dependencies: {
  */
 
 const express = require('express');
+// TeamDekho: Database
+const { initializeDatabase } = require('./db/schema');
+const passport = require('./auth/googleAuth');
+const { generateToken, isHost } = require('./auth/middleware');
+const cookieParser = require('cookie-parser');
+const session = require('express-session');
 const { auth, requiresAuth } = require('express-openid-connect');
 const { withFileLock } = require('./MutexManager');
 const { PassThrough } = require('stream');
@@ -262,6 +268,285 @@ const corsOptions = {
     origin: config.server?.cors?.origin || '*',
     methods: config.server?.cors?.methods || ['GET', 'POST'],
 };
+
+app.use(cookieParser());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true }));
+app.use('/auth', express.static(path.join(__dirname, '../../public')));
+
+// TeamDekho: Google Auth Routes
+app.get('/auth/google',
+  passport.authenticate('google', { scope: ['profile', 'email'] })
+);
+
+app.get('/auth/google/callback',
+  (req, res, next) => {
+    passport.authenticate('google', (err, user, info) => {
+      if (err) {
+        console.error('[TeamDekho Auth] Callback error:', err.message);
+        return res.redirect('/host/login?error=auth_failed');
+      }
+      if (!user) {
+        console.error('[TeamDekho Auth] No user returned:', info);
+        return res.redirect('/host/login?error=no_user');
+      }
+      const token = generateToken(user);
+      res.cookie('td_token', token, {
+        httpOnly: true,
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+        sameSite: 'lax'
+      });
+      console.log('[TeamDekho Auth] Login successful:', user.email);
+      const redirectTo = req.query.redirect;
+      const topic = req.query.topic;
+      if (redirectTo === 'meeting' && topic) {
+        res.redirect('/free/dashboard?newmeeting=' + encodeURIComponent(topic));
+      } else {
+        res.redirect('/free/dashboard');
+      }
+    })(req, res, next);
+  }
+);
+
+
+app.get('/host/login', (req, res) => {
+  res.sendFile(path.join(__dirname, '../../public/views/hostLogin.html'));
+});
+
+app.get('/host/dashboard', isHost, (req, res) => {
+  res.sendFile(path.join(__dirname, '../../public/views/hostDashboard.html'));
+});
+
+app.get('/api/host/me', isHost, (req, res) => {
+  const user = req.user;
+  if (!user) return res.status(401).json({ error: 'Not authenticated' });
+  res.json({
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    avatar: user.avatar,
+    plan: user.plan_name || 'free',
+    plan_id: user.plan_id || 1,
+    personal_meeting_id: user.personal_meeting_id,
+    personal_room_slug: user.personal_room_slug,
+    personal_meeting_link: `${process.env.SERVER_HOST_URL || 'https://localhost:3010'}/join/?room=${user.personal_room_slug}`,
+    max_participants: user.max_participants || 50,
+    max_duration_minutes: user.max_duration_minutes || 60,
+    can_record: user.can_record || false,
+    can_schedule: user.can_schedule || false,
+    can_passcode: user.can_passcode || false,
+    can_waiting_room: user.can_waiting_room || true,
+    can_breakout_rooms: user.can_breakout_rooms || false,
+    can_rtmp_stream: user.can_rtmp_stream || false,
+    passcode: user.passcode || null,
+    paid_at: user.paid_at || null,
+    plan_expires_at: user.plan_expires_at || null,
+    total_meetings: user.total_meetings || 0,
+    total_minutes: user.total_minutes || 0,
+    created_at: user.created_at
+  });
+});
+
+app.post('/api/host/passcode', isHost, async (req, res) => {
+  try {
+    const { passcode } = req.body;
+    const db = require('./db/connection');
+
+    if (passcode && !/^[a-zA-Z0-9]{4,10}$/.test(passcode)) {
+      return res.status(400).json({ error: 'Passcode must be 4-10 alphanumeric characters' });
+    }
+
+    await db.execute(
+      'UPDATE td_hosts SET passcode = ? WHERE id = ?',
+      [passcode || null, req.user.id]
+    );
+
+    res.json({ success: true, passcode: passcode || null });
+  } catch (err) {
+    console.error('[TeamDekho] update passcode error:', err.message);
+    res.status(500).json({ error: 'Failed to update passcode' });
+  }
+});
+
+app.get('/join/:roomId', (req, res) => {
+  const roomId = req.params.roomId;
+  const pwd = req.query.pwd || '';
+  // Redirect to MiroTalk room with lobby support
+  if (pwd) {
+    res.redirect(`/join/?room=${encodeURIComponent(roomId)}&password=${encodeURIComponent(pwd)}`);
+  } else {
+    res.redirect(`/join/?room=${encodeURIComponent(roomId)}`);
+  }
+});
+
+app.get('/api/meetings/info/:meetingId', async (req, res) => {
+  try {
+    const db = require('./db/connection');
+
+    // Check td_meetings first
+    const [rows] = await db.execute(
+      'SELECT meeting_number, topic, room_slug, passcode, status FROM td_meetings WHERE meeting_number = ? OR room_slug = ? ORDER BY created_at DESC LIMIT 1',
+      [req.params.meetingId, req.params.meetingId]
+    );
+
+    if (rows.length > 0) {
+      const meeting = rows[0];
+      return res.json({
+        meetingId: meeting.meeting_number,
+        topic: meeting.topic,
+        roomSlug: meeting.room_slug,
+        hasPasscode: !!meeting.passcode,
+        status: meeting.status
+      });
+    }
+
+    // Fallback: check td_hosts personal meeting room
+    const [hostRows] = await db.execute(
+      'SELECT personal_meeting_id, personal_room_slug, passcode, name FROM td_hosts WHERE personal_meeting_id = ? OR personal_room_slug = ?',
+      [req.params.meetingId, req.params.meetingId]
+    );
+
+    if (hostRows.length > 0) {
+      const host = hostRows[0];
+      return res.json({
+        meetingId: host.personal_meeting_id,
+        topic: `${host.name}'s Meeting`,
+        roomSlug: host.personal_room_slug,
+        hasPasscode: !!host.passcode,
+        status: 'personal'
+      });
+    }
+
+    return res.status(404).json({ error: 'Meeting not found' });
+  } catch (err) {
+    console.error('[TeamDekho] meeting info error:', err.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.get('/j/:meetingId', (req, res) => {
+  res.sendFile(path.join(__dirname, '../../public/views/joinMeeting.html'));
+});
+
+// Create meeting
+app.post('/api/meetings/create', isHost, async (req, res) => {
+  try {
+    const { topic, passcode } = req.body;
+    const user = req.user;
+
+    // Generate 10-digit meeting number
+    const meetingNumber = Math.floor(1000000000 + Math.random() * 9000000000).toString();
+
+    // Generate room slug from topic
+    const roomSlug = (topic || 'instant-meeting')
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .trim()
+      .replace(/\s+/g, '-')
+      .substring(0, 50) + '-' + Date.now().toString(36);
+
+    const db = require('./db/connection');
+    await db.execute(
+      `INSERT INTO td_meetings 
+       (host_id, meeting_number, topic, room_slug, passcode, status) 
+       VALUES (?, ?, ?, ?, ?, 'waiting')`,
+      [user.id, meetingNumber, topic || 'Instant Meeting', roomSlug, passcode || null]
+    );
+
+    // Update host total meetings count
+    await db.execute(
+      'UPDATE td_hosts SET total_meetings = total_meetings + 1 WHERE id = ?',
+      [user.id]
+    );
+
+    res.json({
+      success: true,
+      meetingId: meetingNumber,
+      roomSlug,
+      joinUrl: `/join/?room=${roomSlug}`
+    });
+  } catch (err) {
+    console.error('[TeamDekho] Create meeting error:', err.message);
+    res.status(500).json({ error: 'Failed to create meeting' });
+  }
+});
+
+// Get my meetings
+app.get('/api/meetings/my', isHost, async (req, res) => {
+  try {
+    const db = require('./db/connection');
+    const [rows] = await db.execute(
+      `SELECT id, meeting_number, topic, room_slug, status, 
+       started_at, ended_at, duration_seconds, peak_participants,
+       total_participants, is_recorded, created_at
+       FROM td_meetings 
+       WHERE host_id = ? 
+       ORDER BY created_at DESC LIMIT 10`,
+      [req.user.id]
+    );
+    res.json({ meetings: rows });
+  } catch (err) {
+    console.error('[TeamDekho] fetch meetings error:', err.message);
+    res.status(500).json({ error: 'Failed to fetch meetings' });
+  }
+});
+
+app.post('/api/meetings/verify', async (req, res) => {
+  try {
+    const { meetingId, passcode } = req.body;
+    const db = require('./db/connection');
+
+    // Check td_meetings first
+    const [rows] = await db.execute(
+      'SELECT passcode FROM td_meetings WHERE meeting_number = ? OR room_slug = ? ORDER BY created_at DESC LIMIT 1',
+      [meetingId, meetingId]
+    );
+
+    if (rows.length > 0) {
+      const meeting = rows[0];
+      if (!meeting.passcode || meeting.passcode === passcode) {
+        return res.json({ success: true });
+      }
+      return res.status(401).json({ success: false, error: 'Incorrect passcode' });
+    }
+
+    // Fallback: check td_hosts personal meeting room
+    const [hostRows] = await db.execute(
+      'SELECT passcode FROM td_hosts WHERE personal_meeting_id = ? OR personal_room_slug = ?',
+      [meetingId, meetingId]
+    );
+
+    if (hostRows.length > 0) {
+      const host = hostRows[0];
+      if (!host.passcode || host.passcode === passcode) {
+        return res.json({ success: true });
+      }
+      return res.status(401).json({ success: false, error: 'Incorrect passcode' });
+    }
+
+    return res.status(404).json({ error: 'Meeting not found' });
+  } catch (err) {
+    console.error('[TeamDekho] Verify passcode error:', err.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.get('/meeting-ended', (req, res) => {
+  res.sendFile(path.join(__dirname, '../../public/views/meetingEnded.html'));
+});
+
+app.get('/pricing', (req, res) => {
+  res.sendFile(path.join(__dirname, '../../public/views/pricing.html'));
+});
+
+app.get('/free/dashboard', (req, res) => {
+  res.sendFile(path.join(__dirname, '../../public/views/freeDashboard.html'));
+});
+
+// TeamDekho: Auto-initialize database on startup
+initializeDatabase().catch(err =>
+  console.error('[TeamDekho DB] Init failed:', err.message)
+);
 
 const server = httpolyglot.createServer(options, app);
 
@@ -601,6 +886,16 @@ function startServer() {
     app.use(cors(corsOptions));
     app.use(compression());
     app.use(express.json({ limit: '50mb' })); // Handles JSON payloads
+    // TeamDekho: Auth middleware
+    app.use(cookieParser());
+    app.use(session({
+      secret: process.env.SESSION_SECRET || 'teamdekho_super_secret_2026',
+      resave: false,
+      saveUninitialized: false,
+      cookie: { secure: false, maxAge: 7 * 24 * 60 * 60 * 1000 }
+    }));
+    app.use(passport.initialize());
+    app.use(passport.session());
     app.use(express.urlencoded({ extended: true, limit: '50mb' })); // Handles URL-encoded payloads
     app.use(express.raw({ type: 'video/webm', limit: '50mb' })); // Handles raw binary data
     app.use(restApi.basePath + '/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument)); // api docs
@@ -772,6 +1067,33 @@ function startServer() {
             peer_name: false,
             message: 'Profile not found because OIDC is disabled',
         });
+    });
+
+    // Avatar Proxy Endpoint
+    app.get('/api/avatar', async (req, res) => {
+      const url = req.query.url;
+      if (!url || !url.startsWith('https://')) {
+        return res.status(400).end();
+      }
+      try {
+        const https = require('https');
+        https.get(url, (imgRes) => {
+          res.setHeader('Content-Type', imgRes.headers['content-type'] || 'image/jpeg');
+          res.setHeader('Cache-Control', 'public, max-age=86400');
+          imgRes.pipe(res);
+        }).on('error', () => res.status(404).end());
+      } catch (e) {
+        res.status(500).end();
+      }
+    });
+
+    // Logout Route
+    app.get('/auth/logout', (req, res) => {
+      req.logout((err) => {
+        res.clearCookie('td_token');
+        res.clearCookie('connect.sid');
+        res.redirect('/');
+      });
     });
 
     // Authentication Callback Route
@@ -1669,7 +1991,7 @@ function startServer() {
             const api = new ServerApi(host, authorization);
 
             if (!api.isAuthorized()) {
-                log.debug('MiroTalk get meetings - Unauthorized', {
+                log.debug('TeamDekho get meetings - Unauthorized', {
                     header: req.headers,
                     body: req.body,
                 });
@@ -1686,7 +2008,7 @@ function startServer() {
             });
 
             // log.debug the output if all done
-            log.debug('MiroTalk get stats - Authorized', {
+            log.debug('TeamDekho get stats - Authorized', {
                 header: req.headers,
                 body: req.body,
                 timestamp,
@@ -1721,7 +2043,7 @@ function startServer() {
         const meetings = api.getMeetings(roomList);
         res.json({ meetings: meetings });
         // log.debug the output if all done
-        log.debug('MiroTalk get meetings - Authorized', {
+        log.debug('TeamDekho get meetings - Authorized', {
             header: req.headers,
             body: req.body,
             meetings: meetings,
@@ -1740,7 +2062,7 @@ function startServer() {
         const { host, authorization } = req.headers;
         const api = new ServerApi(host, authorization);
         if (!api.isAuthorized()) {
-            log.debug('MiroTalk get meeting - Unauthorized', {
+            log.debug('TeamDekho get meeting - Unauthorized', {
                 header: req.headers,
                 body: req.body,
             });
@@ -1750,7 +2072,7 @@ function startServer() {
         const meetingURL = api.getMeetingURL();
         res.json({ meeting: meetingURL });
         // log.debug the output if all done
-        log.debug('MiroTalk get meeting - Authorized', {
+        log.debug('TeamDekho get meeting - Authorized', {
             header: req.headers,
             body: req.body,
             meeting: meetingURL,
@@ -1769,7 +2091,7 @@ function startServer() {
         const { host, authorization } = req.headers;
         const api = new ServerApi(host, authorization);
         if (!api.isAuthorized()) {
-            log.debug('MiroTalk get join - Unauthorized', {
+            log.debug('TeamDekho get join - Unauthorized', {
                 header: req.headers,
                 body: req.body,
             });
@@ -1779,7 +2101,7 @@ function startServer() {
         const joinURL = api.getJoinURL(req.body);
         res.json({ join: joinURL });
         // log.debug the output if all done
-        log.debug('MiroTalk get join - Authorized', {
+        log.debug('TeamDekho get join - Authorized', {
             header: req.headers,
             body: req.body,
             join: joinURL,
@@ -1798,7 +2120,7 @@ function startServer() {
         const { host, authorization } = req.headers;
         const api = new ServerApi(host, authorization);
         if (!api.isAuthorized()) {
-            log.debug('MiroTalk get token - Unauthorized', {
+            log.debug('TeamDekho get token - Unauthorized', {
                 header: req.headers,
                 body: req.body,
             });
@@ -1808,7 +2130,7 @@ function startServer() {
         const token = api.getToken(req.body);
         res.json({ token: token });
         // log.debug the output if all done
-        log.debug('MiroTalk get token - Authorized', {
+        log.debug('TeamDekho get token - Authorized', {
             header: req.headers,
             body: req.body,
             token: token,
@@ -1829,7 +2151,7 @@ function startServer() {
             const { host, authorization } = req.headers;
             const api = new ServerApi(host, authorization);
             if (!api.isAuthorized()) {
-                log.debug('MiroTalk end meeting - Unauthorized', {
+                log.debug('TeamDekho end meeting - Unauthorized', {
                     header: req.headers,
                     body: req.body,
                 });
@@ -1842,7 +2164,7 @@ function startServer() {
             const status = result.success ? 200 : 404;
             res.status(status).json(result);
             // log.debug the output if all done
-            log.debug('MiroTalk end meeting - Authorized', {
+            log.debug('TeamDekho end meeting - Authorized', {
                 header: req.headers,
                 room: room,
                 result: result,
@@ -1911,7 +2233,7 @@ function startServer() {
         res.json({ activeRooms: activeRooms });
 
         // log.debug the output if all done
-        log.debug('MiroTalk get active rooms - Authorized', {
+        log.debug('TeamDekho get active rooms - Authorized', {
             header: req.headers,
             body: req.body,
             activeRooms: activeRooms,
@@ -5409,3 +5731,4 @@ process.on('unhandledRejection', (reason, promise) => {
     log.error('Unhandled Rejection at:', promise, 'reason:', reason);
     // Don't exit on unhandled rejection, just log it
 });
+

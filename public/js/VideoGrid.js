@@ -147,7 +147,7 @@ function resizeChatRoom() {
 
 function resizeTranscriptionRoom() {
     if (
-        isMobileDevice ||
+        window.isMobileDevice ||
         !Boolean(transcription.speechTranscription) ||
         transcription.isHidden ||
         transcription.isPinned
