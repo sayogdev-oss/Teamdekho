@@ -3239,27 +3239,50 @@ function startServer() {
             }
         });
 
-        socket.on('resumeConsumer', async ({ consumer_id, type }, callback) => {
+        socket.on('resumeConsumer', async (data, callback) => {
             if (!roomExists(socket)) {
-                return callback({ error: 'Room not found' });
+                if (callback) return callback({ error: 'Room not found' });
+                return;
             }
 
             const peer = getPeer(socket);
 
             if (!peer) {
-                return callback({
-                    error: `peer with ID: "${socket.id}" for consumer with id "${consumer_id}" type "${type}" not found`,
+                if (callback) return callback({
+                    error: `peer with ID: "${socket.id}" not found`,
                 });
+                return;
             }
 
             if (isPeerInLobby(peer)) {
-                return callback({ error: 'In lobby' });
+                if (callback) return callback({ error: 'In lobby' });
+                return;
             }
 
+            // Pagination resume (by peerId)
+            if (data.peerId) {
+                const { peerId } = data;
+                for (const consumer of peer.consumers.values()) {
+                    if (consumer.appData && consumer.appData.peerId === peerId) {
+                        try {
+                            await consumer.resume();
+                            log.debug('Consumer resumed via pagination', { peerId });
+                        } catch (err) {
+                            log.warn('Failed to resume consumer via pagination', err);
+                        }
+                    }
+                }
+                if (callback) callback('successfully');
+                return;
+            }
+
+            // Original resume (by consumer_id)
+            const { consumer_id, type } = data;
             const consumer = peer.getConsumer(consumer_id);
 
             if (!consumer) {
-                return callback({ error: `consumer with id "${consumer_id}" type "${type}" not found` });
+                if (callback) return callback({ error: `consumer with id "${consumer_id}" type "${type}" not found` });
+                return;
             }
 
             const peerInfo = getPeerInfo(peer);
@@ -3269,13 +3292,29 @@ function startServer() {
 
                 log.debug('Consumer resumed', { consumer_id, type, peerInfo });
 
-                callback('successfully');
+                if (callback) callback('successfully');
             } catch (error) {
                 log.warn('Resume consumer', {
                     error: error,
                     peerInfo,
                 });
-                callback({ error: error.message });
+                if (callback) callback({ error: error.message });
+            }
+        });
+
+        socket.on('pauseConsumer', async ({ peerId }) => {
+            if (!roomExists(socket)) return;
+            const peer = getPeer(socket);
+            if (!peer) return;
+            for (const consumer of peer.consumers.values()) {
+                if (consumer.appData && consumer.appData.peerId === peerId) {
+                    try {
+                        await consumer.pause();
+                        log.debug('Consumer paused via pagination', { peerId });
+                    } catch (err) {
+                        log.warn('Failed to pause consumer via pagination', err);
+                    }
+                }
             }
         });
 
@@ -3348,6 +3387,32 @@ function startServer() {
             data.broadcast ? room.broadCast(socket.id, 'cmd', data) : room.sendTo(data.peer_id, 'cmd', data);
         });
 
+        socket.on('makeCoHost', async ({ peerId }) => {
+            if (!roomExists(socket)) return;
+            const room = getRoom(socket);
+            const peer = room.getPeer(socket.id);
+            if (!peer || !peer.peer_info.peer_presenter) return;
+            const targetPeer = room.getPeer(peerId);
+            if (!targetPeer) return;
+            targetPeer.updateCoHost(true);
+            room.broadCast(socket.id, 'coHostUpdate', { peerId, isCoHost: true });
+            socket.emit('coHostUpdate', { peerId, isCoHost: true });
+            log.debug('makeCoHost', { peerId });
+        });
+
+        socket.on('removeCoHost', async ({ peerId }) => {
+            if (!roomExists(socket)) return;
+            const room = getRoom(socket);
+            const peer = room.getPeer(socket.id);
+            if (!peer || !peer.peer_info.peer_presenter) return;
+            const targetPeer = room.getPeer(peerId);
+            if (!targetPeer) return;
+            targetPeer.updateCoHost(false);
+            room.broadCast(socket.id, 'coHostUpdate', { peerId, isCoHost: false });
+            socket.emit('coHostUpdate', { peerId, isCoHost: false });
+            log.debug('removeCoHost', { peerId });
+        });
+
         socket.on('roomAction', async (dataObject) => {
             if (!roomExists(socket)) return;
 
@@ -3361,12 +3426,13 @@ function startServer() {
             log.debug('Room action:', data);
 
             const isPresenter = isPeerPresenter(socket.room_id, socket.id, data.peer_name, data.peer_uuid);
-
             const room = getRoom(socket);
+            const peer = room.getPeer(socket.id);
+            const isCoHost = peer.peer_info?.peer_cohost || false;
 
             switch (data.action) {
                 case 'broadcasting':
-                    if (!isPresenter) return;
+                    if (!isPresenter && !isCoHost) return;
                     room.setIsBroadcasting(data.room_broadcasting);
                     room.broadCast(socket.id, 'roomAction', data.action);
                     break;
@@ -3545,9 +3611,12 @@ function startServer() {
 
             log.debug('Breakout room end all', data);
 
+            const room = getRoom(socket);
+            const peer = room.getPeer(socket.id);
             const isPresenter = isPeerPresenter(socket.room_id, socket.id, data.peer_name, data.peer_uuid);
+            const isCoHost = peer.peer_info?.peer_cohost || false;
 
-            if (!isPresenter) return;
+            if (!isPresenter && !isCoHost) return;
 
             const { mainRoom } = data;
             if (!mainRoom) return;
@@ -3610,11 +3679,13 @@ function startServer() {
 
             log.debug('Breakout room', data);
 
-            const isPresenter = isPeerPresenter(socket.room_id, socket.id, data.peer_name, data.peer_uuid);
-
-            if (!isPresenter) return;
-
             const room = getRoom(socket);
+            const peer = room.getPeer(socket.id);
+            const isPresenter = isPeerPresenter(socket.room_id, socket.id, data.peer_name, data.peer_uuid);
+            const isCoHost = peer.peer_info?.peer_cohost || false;
+
+            if (!isPresenter && !isCoHost) return;
+
             if (!room) return;
 
             // Send breakout room assignment to each assigned peer
@@ -3659,13 +3730,16 @@ function startServer() {
             ];
 
             if (presenterActions.some((v) => data.action === v)) {
+                const room = getRoom(socket);
+                const peer = room.getPeer(socket.id);
                 const isPresenter = isPeerPresenter(
                     socket.room_id,
                     socket.id,
                     data.from_peer_name,
                     data.from_peer_uuid
                 );
-                if (!isPresenter) return;
+                const isCoHost = peer.peer_info?.peer_cohost || false;
+                if (!isPresenter && !isCoHost) return;
             }
 
             const room = getRoom(socket);
@@ -3731,8 +3805,10 @@ function startServer() {
             const room = getRoom(socket);
 
             const isPresenter = isPeerPresenter(socket.room_id, socket.id, data.peer_name, data.peer_uuid);
+            const peer = room.getPeer(socket.id);
+            const isCoHost = peer?.peer_info?.peer_cohost || false;
 
-            if (!isPresenter) return;
+            if (!isPresenter && !isCoHost) return;
 
             const moderator = data.moderator;
 
@@ -4000,7 +4076,8 @@ function startServer() {
                 peer.peer_info?.peer_name,
                 peer.peer_info?.peer_uuid
             );
-            if (!isPresenter) {
+            const isCoHost = peer.peer_info?.peer_cohost || false;
+            if (!isPresenter && !isCoHost) {
                 log.debug('whiteboardAction blocked: sender is not presenter', {
                     action: data.action,
                     peer_name: peer.peer_info?.peer_name,
@@ -4070,7 +4147,8 @@ function startServer() {
                     peer.peer_info?.peer_name,
                     peer.peer_info?.peer_uuid
                 );
-                if (!isPresenter) return;
+                const isCoHost = peer.peer_info?.peer_cohost || false;
+                if (!isPresenter && !isCoHost) return;
             }
 
             // Override client-supplied identity with server-side values to prevent spoofing
@@ -4709,7 +4787,8 @@ function startServer() {
                     peer?.peer_info?.peer_name,
                     peer?.peer_info?.peer_uuid
                 );
-                if (!isPresenter) {
+                const isCoHost = peer?.peer_info?.peer_cohost || false;
+                if (!isPresenter && !isCoHost) {
                     log.debug('createPoll blocked by moderator rule (polls_cant_create)', {
                         peer_name: peer?.peer_info?.peer_name,
                     });
@@ -4812,7 +4891,8 @@ function startServer() {
             // Enforce the moderator "only presenter can create/edit/delete polls" rule server-side.
             if (room._moderator && room._moderator.polls_cant_create) {
                 const isPresenter = isPeerPresenter(socket.room_id, socket.id, peer_name, peer_uuid);
-                if (!isPresenter) {
+                const isCoHost = peer.peer_info?.peer_cohost || false;
+                if (!isPresenter && !isCoHost) {
                     log.debug('deletePoll blocked by moderator rule (polls_cant_create)', { peer_name });
                     return;
                 }

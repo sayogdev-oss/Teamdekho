@@ -205,8 +205,14 @@ module.exports = class Room {
             .createRouter({
                 mediaCodecs,
             })
-            .then((router) => {
+            .then(async (router) => {
                 this.router = router;
+                
+                this.activeSpeakerObserver = await router.createActiveSpeakerObserver();
+                this.activeSpeakerObserver.on('dominantspeaker', (dominantSpeaker) => {
+                    this.io.to(this.id).emit('dominantSpeaker', { peerId: dominantSpeaker.producer.appData.peerId });
+                });
+
                 if (this.audioLevelObserverEnabled) {
                     log.debug('Audio Level Observer enabled, starting observation...');
                     this.startAudioLevelObservation().catch((err) => {
@@ -303,7 +309,7 @@ module.exports = class Room {
     }
 
     addProducerToAudioLevelObserver(producer) {
-        if (this.audioLevelObserverEnabled) {
+        if (this.audioLevelObserverEnabled && producer.kind === 'audio') {
             this.audioLevelObserver.addProducer(producer);
             log.debug('Producer added to audio level observer', { producer });
         }
@@ -361,7 +367,7 @@ module.exports = class Room {
     }
 
     addProducerToActiveSpeakerObserver(producer) {
-        if (this.activeSpeakerObserverEnabled) {
+        if (this.activeSpeakerObserverEnabled && producer.kind === 'audio') {
             this.activeSpeakerObserver.addProducer(producer);
             log.debug('Producer added to active speaker observer', { producer });
         }
@@ -789,6 +795,10 @@ module.exports = class Room {
             },
         ]);
 
+        if (kind === 'audio' && this.activeSpeakerObserver) {
+            await this.activeSpeakerObserver.addProducer({ producerId: id });
+        }
+
         log.debug('Producer created successfully', {
             producerTransportId,
             producer_id: id,
@@ -868,6 +878,15 @@ module.exports = class Room {
 
         const { consumer, params } = peerConsumer;
         const { id, kind } = consumer;
+
+        let producerPeerId = null;
+        for (const [pId, p] of this.peers.entries()) {
+            if (p.producers.has(producerId)) {
+                producerPeerId = pId;
+                break;
+            }
+        }
+        consumer.appData.peerId = producerPeerId;
 
         consumer.once('producerclose', () => {
             log.debug('Consumer closed due to "producerclose" event', {

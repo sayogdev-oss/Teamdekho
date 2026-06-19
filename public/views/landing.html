@@ -566,28 +566,38 @@ section.hero, .hero { padding-top: 6px !important; }
                     </div>
                 </section>
 
-                <!-- ── Inline Start + Join Meeting Section ── -->
-                <section class="td-join-section">
-                    <div class="td-join-card td-start-card">
-                        <h3>Start a Meeting</h3>
-                        <p>Enter a topic and start instantly — Google login required.</p>
-                        <input
-                            id="roomName"
-                            class="td-start-input"
-                            type="text"
-                            maxlength="50"
-                            placeholder="Enter meeting topic (e.g. Team Standup)"
-                            value=""
-                        />
-                        <button id="joinRoomButton" class="td-start-btn" onclick="handleJoinRoom(event)">
-                            Start Meeting
-                        </button>
-                    </div>
-                    <div class="td-join-card">
-                        <h3>Got a meeting link or ID?</h3>
-                        <p>Enter it below to join instantly — no account needed.</p>
-                        <div id="guest-join-bar">
-                            <button id="gjbMainBtn" onclick="openGjbModal()">Join Meeting</button>
+                <!-- ── Start Meeting Section ── -->
+                <section class="cta section">
+                    <div class="container">
+                        <div class="cta-inner section-inner br-12">
+                            <h3 id="joinDescription" class="section-title mt-0">Start or Join a Meeting</h3>
+                            <div>
+                                <div class="mb-24">
+                                    <label for="roomName"></label>
+                                    <div class="form-group-desktop">
+                                        <input
+                                            id="roomName"
+                                            class="form-input"
+                                            type="text"
+                                            maxlength="50"
+                                            placeholder="Enter meeting topic (e.g. Team Standup)"
+                                            value=""
+                                        />
+                                        <button id="joinRoomButton" class="button button-primary pulse" onclick="handleJoinRoom(event)">
+                                            Start Meeting
+                                        </button>
+                                    </div>
+                                    <div class="form-group-mobile" style="display:none;"></div>
+                                </div>
+                                <div style="margin-top:12px;">
+                                    <button id="genRoomButton" class="button button-sm button-secondary" style="display:none;">
+                                        Generate room name
+                                    </button>
+                                    <button onclick="openGjbModal();return false;" style="background:transparent;border:1px solid rgba(45,212,191,0.4);color:rgb(45,212,191);padding:9px 20px;border-radius:8px;font-size:0.85rem;font-weight:600;cursor:pointer;transition:all 0.2s;width:100%;" onmouseover="this.style.background='rgba(45,212,191,0.08)'" onmouseout="this.style.background='transparent'">
+                                        <i class="fas fa-link" style="margin-right:6px;font-size:0.8rem;"></i>Join with Meeting ID
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </section>
@@ -837,5 +847,15 @@ function doGuestJoin(val, passcode) {
         });
 }
         </script>
-    </body>
+    <script>
+function handleJoinRoomMobile(e) {
+    const mobileInput = document.getElementById('roomNameMobile');
+    const desktopInput = document.getElementById('roomName');
+    if (mobileInput && desktopInput) {
+        desktopInput.value = mobileInput.value;
+    }
+    handleJoinRoom(e);
+}
+</script>
+</body>
 </html>

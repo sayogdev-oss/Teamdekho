@@ -4,6 +4,15 @@
 // RESPONSIVE PARTICIPANTS VIEW
 // ####################################################
 
+function renderGridForPage(visiblePeerIds) {
+    // Do nothing - let MiroTalk handle its own grid rendering
+    // Pagination pause/resume handles bandwidth, not DOM visibility
+}
+
+// ####################################################
+// RESPONSIVE PARTICIPANTS VIEW
+// ####################################################
+
 let customRatio = true;
 let isHideALLVideosActive = false;
 

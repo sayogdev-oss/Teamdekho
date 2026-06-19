@@ -34,7 +34,8 @@ const isDesktopDevice = deviceType === 'desktop';
 window.isDesktopDevice = isDesktopDevice;
 globalThis.isDesktopDevice = isDesktopDevice;
 const isFirefox = parserResult.browser.name?.toLowerCase() === 'firefox';
-const thisInfo = getInfo();
+let thisInfo = null;
+try { thisInfo = getInfo(); } catch(e) { console.warn("getInfo deferred", e); }
 
 const isEmbedded = window.self !== window.top;
 const showDocumentPipBtn = !isEmbedded && 'documentPictureInPicture' in window;
@@ -280,6 +281,7 @@ let isHideMeActive = getHideMeActive();
 let notify = getNotify();
 let chat = getChat();
 isPresenter = isPeerPresenter();
+let isCoHost = false;
 
 let peer_info = null;
 
@@ -6534,6 +6536,17 @@ function getParticipantsList(peers) {
                             onClick: `rc.peerAction('me',this.id,'eject')`,
                             iconHtml: peer_eject,
                             label: 'Eject participant',
+                        })
+                    );
+                }
+                if (isPresenter) {
+                    menuItems += renderParticipantMenuItem(
+                        renderParticipantActionButton({
+                            buttonClass: 'btn-sm ml5',
+                            buttonId: `${peer_id}___pCoHost`,
+                            onClick: `rc.toggleCoHost('${peer_id}')`,
+                            iconHtml: `<i class="fas fa-user-shield"></i>`,
+                            label: 'Make Co-Host',
                         })
                     );
                 }

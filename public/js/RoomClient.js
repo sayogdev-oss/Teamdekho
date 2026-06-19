@@ -254,6 +254,8 @@ class RoomClient {
     ) {
         this.room_id = room_id;
         this.peer_id = socket.id;
+        this.coHostPeers = new Set();
+        this.isCoHost = false;
         this.peer_name = peer_name;
         this.peer_uuid = peer_uuid;
         this.peer_info = peer_info;
@@ -682,6 +684,7 @@ class RoomClient {
             let my_peer_info = this.peers.get(peer).peer_info;
             console.log('07.1 ----> My Peer info', my_peer_info);
             isPresenter = window.localStorage.isReconnected === 'true' ? isPresenter : my_peer_info.peer_presenter;
+            isCoHost = my_peer_info.peer_cohost || false;
             this.peer_info.peer_presenter = isPresenter;
             this.getId('isUserPresenter').innerText = isPresenter;
             window.localStorage.isReconnected = false;
@@ -1259,6 +1262,46 @@ class RoomClient {
         this.socket.on('breakoutRoomHelp', this.handleBreakoutRoomHelp);
         this.socket.on('followMe', this.handleFollowMeData);
         this.socket.on('chatReaction', this.handleChatReaction);
+        this.socket.on('coHostUpdate', ({ peerId, isCoHost }) => {
+            if (isCoHost) {
+                this.coHostPeers.add(peerId);
+            } else {
+                this.coHostPeers.delete(peerId);
+            }
+            const menuItem = this.getId(`${peerId}___pCoHost`);
+            if (menuItem) {
+                menuItem.querySelector('.label') 
+                    ? menuItem.querySelector('.label').innerText = isCoHost ? 'Remove Co-Host' : 'Make Co-Host'
+                    : menuItem.innerText = isCoHost ? 'Remove Co-Host' : 'Make Co-Host';
+            }
+            if (peerId === this.peer_id) {
+                this.isCoHost = isCoHost;
+            }
+        });
+        this.socket.on('dominantSpeaker', ({ peerId }) => {
+            const visible = (typeof getVisiblePeersForPage === 'function')
+                ? getVisiblePeersForPage(currentPage)
+                : (window.getVisiblePeersForPage ? window.getVisiblePeersForPage(window.currentPage) : []);
+
+            if (visible.length && !visible.includes(peerId)) {
+                const oldestVisible = visible[visible.length - 1];
+                socket.emit('pauseConsumer', { peerId: oldestVisible });
+                socket.emit('resumeConsumer', { peerId: peerId });
+
+                const oldEl = document.getElementById('video-' + oldestVisible);
+                const newEl = document.getElementById('video-' + peerId);
+                if (oldEl) oldEl.style.display = 'none';
+                if (newEl) newEl.style.display = 'block';
+            }
+        });
+        this.socket.on('coHostUpdate', ({ peerId, isCoHost: coHostStatus }) => {
+            if (peerId === this.peer_info.peer_id) {
+                isCoHost = coHostStatus;
+                this.peer_info.peer_cohost = coHostStatus;
+            }
+            const menuItem = document.getElementById(`cohost-${peerId}`);
+            if (menuItem) menuItem.innerText = coHostStatus ? 'Remove Co-Host' : 'Make Co-Host';
+        });
     }
 
     // ####################################################
@@ -1313,6 +1356,9 @@ class RoomClient {
         this.removeVideoOff(data.peer_id);
         this.lobbyRemoveMe(data.peer_id);
         participantsCount = data.peer_counts;
+
+        // peer left
+
         if (!isBroadcastingEnabled) adaptAspectRatio(participantsCount);
         if (isParticipantsListOpen) getRoomParticipants();
         if (isBreakoutPanelOpen) refreshBreakoutPanel();
@@ -1365,6 +1411,7 @@ class RoomClient {
                     continue;
                 }
                 await this.consume(producer_id, peer_name, peer_info, type);
+                // peer joined
             }
 
             this.applyPendingFollowMe();
@@ -1556,7 +1603,7 @@ class RoomClient {
 
     handleBreakoutRoomHelp = (data) => {
         console.log('SocketOn breakoutRoomHelp', data);
-        if (!isPresenter) return;
+        if (!(isPresenter || isCoHost)) return;
         sound('notification');
         const roomIdx = breakoutRooms.findIndex((r) => r.id === data.breakoutRoom);
         const room = roomIdx !== -1 ? breakoutRooms[roomIdx] : null;
@@ -2252,10 +2299,14 @@ class RoomClient {
                     encodings: encodings,
                     codecs: codec,
                 });
-                params.encodings = encodings;
+                params.encodings = [
+                  { rid: 'r0', maxBitrate: 100000, scaleResolutionDownBy: 4, maxFramerate: 15 },
+                  { rid: 'r1', maxBitrate: 300000, scaleResolutionDownBy: 2, maxFramerate: 24 },
+                  { rid: 'r2', maxBitrate: 600000, scaleResolutionDownBy: 1, maxFramerate: 30 }
+                ];
                 params.codecs = codec;
                 params.codecOptions = {
-                    videoGoogleStartBitrate: 1000,
+                  videoGoogleStartBitrate: 300
                 };
             }
 
@@ -7570,7 +7621,7 @@ class RoomClient {
     pollCreateNewForm(e) {
         e.preventDefault();
 
-        if (this._moderator.polls_cant_create && !isPresenter) {
+        if (this._moderator.polls_cant_create && !isPresenter && !isCoHost) {
             return userLog(
                 'warning',
                 'The moderator does not allow non-presenters to create or edit polls',
@@ -10622,7 +10673,7 @@ class RoomClient {
         let btnGl = this.getId(uid);
         if (btnGl) {
             btnGl.addEventListener('click', () => {
-                isPresenter
+                (isPresenter || isCoHost)
                     ? this.askPeerGeoLocation(peer_id)
                     : this.userLog('warning', 'Only the presenter can ask geolocation to the participants', 'top-end');
             });
@@ -10639,7 +10690,7 @@ class RoomClient {
         let btnBan = this.getId(uid);
         if (btnBan) {
             btnBan.addEventListener('click', () => {
-                isPresenter
+                (isPresenter || isCoHost)
                     ? this.peerAction('me', peer_id, 'ban')
                     : this.userLog('warning', 'Only the presenter can ban the participants', 'top-end');
             });
@@ -10656,7 +10707,7 @@ class RoomClient {
         let btnKo = this.getId(uid);
         if (btnKo) {
             btnKo.addEventListener('click', () => {
-                isPresenter
+                (isPresenter || isCoHost)
                     ? this.peerAction('me', peer_id, 'eject')
                     : this.userLog('warning', 'Only the presenter can eject the participants', 'top-end');
             });
@@ -10714,11 +10765,11 @@ class RoomClient {
         if (btnCm) {
             btnCm.addEventListener('click', (e) => {
                 if (e.target.className === html.videoOn) {
-                    isPresenter
+                    (isPresenter || isCoHost)
                         ? this.peerAction('me', peer_id, 'hide')
                         : this.userLog('warning', 'Only the presenter can hide the participants', 'top-end');
                 } else {
-                    isPresenter
+                    (isPresenter || isCoHost)
                         ? this.peerAction('me', peer_id, 'unhide')
                         : this.userLog('warning', 'Only the presenter can unhide the participants', 'top-end');
                 }
@@ -10737,11 +10788,11 @@ class RoomClient {
         if (btnAU) {
             btnAU.addEventListener('click', (e) => {
                 if (e.target.className === html.audioOn) {
-                    isPresenter
+                    (isPresenter || isCoHost)
                         ? this.peerAction('me', peer_id, 'mute')
                         : this.userLog('warning', 'Only the presenter can mute the participants', 'top-end');
                 } else {
-                    isPresenter
+                    (isPresenter || isCoHost)
                         ? this.peerAction('me', peer_id, 'unmute')
                         : this.userLog('warning', 'Only the presenter can unmute the participants', 'top-end');
                 }
@@ -10952,6 +11003,15 @@ class RoomClient {
     // ####################################################
     // PEER ACTION
     // ####################################################
+
+    makeOrRemoveCoHost(peerId) {
+        const isCurrentlyCoHost = this.coHostPeers && this.coHostPeers.has(peerId);
+        if (isCurrentlyCoHost) {
+            this.socket.emit('removeCoHost', { peerId });
+        } else {
+            this.socket.emit('makeCoHost', { peerId });
+        }
+    }
 
     async peerAction(from_peer_name, id, action, emit = true, broadcast = false, info = true, msg = '') {
         const words = id.split('___');
@@ -11393,17 +11453,30 @@ class RoomClient {
         }
     }
 
+    toggleCoHost(peerId) {
+        const isCurrentlyCoHost = document.getElementById(`${peerId}___pCoHost`)?.dataset.cohost === 'true';
+        if (isCurrentlyCoHost) {
+            this.socket.emit('removeCoHost', { peerId });
+            const btn = document.getElementById(`${peerId}___pCoHost`);
+            if (btn) btn.dataset.cohost = 'false';
+        } else {
+            this.socket.emit('makeCoHost', { peerId });
+            const btn = document.getElementById(`${peerId}___pCoHost`);
+            if (btn) btn.dataset.cohost = 'true';
+        }
+    }
+
     peerGuestNotAllowed(action) {
         console.log('peerGuestNotAllowed', action);
         switch (action) {
             case 'audio':
-                this.userLog('warning', 'Only the presenter can mute/unmute participants', 'top-end');
+                this.userLog('warning', 'Only the presenter or co-host can mute/unmute participants', 'top-end');
                 break;
             case 'video':
-                this.userLog('warning', 'Only the presenter can hide/show participants', 'top-end');
+                this.userLog('warning', 'Only the presenter or co-host can hide/show participants', 'top-end');
                 break;
             case 'screen':
-                this.userLog('warning', 'Only the presenter can start/stop the screen of participants', 'top-end');
+                this.userLog('warning', 'Only the presenter or co-host can start/stop the screen of participants', 'top-end');
                 break;
             default:
                 break;

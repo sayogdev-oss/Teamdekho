@@ -34,6 +34,7 @@ module.exports = class Peer {
         this.peer_recording = peer_recording;
         this.peer_hand = peer_hand;
         this.peer_lobby = peer_lobby;
+        this.peer_cohost = false;
 
         this.transports = new Map();
         this.consumers = new Map();
@@ -98,6 +99,11 @@ module.exports = class Peer {
             default:
                 break;
         }
+    }
+
+    updateCoHost(status) {
+        this.peer_cohost = status;
+        this.peer_info.peer_cohost = status;
     }
 
     // ####################################################

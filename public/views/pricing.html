@@ -12,6 +12,7 @@
       --bg-dark: #0f172a;
       --card-bg: #1e293b;
       --text-muted: #94a3b8;
+      --max-width: 1200px;
     }
 
     * {
@@ -20,28 +21,34 @@
       box-sizing: border-box;
     }
 
+    html {
+      scroll-behavior: smooth;
+    }
+
     body {
-      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
       background: linear-gradient(135deg, #0f2027, #1e293b, #0f172a);
       color: #f8fafc;
       min-height: 100vh;
       line-height: 1.6;
+      overflow-x: hidden;
     }
 
-    /* Header Styles */
+    /* Header Styles & Mobile Menu Toggle */
     header {
-      background: rgba(26, 45, 78, 0.9);
-      backdrop-filter: blur(10px);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
       position: sticky;
       top: 0;
-      z-index: 100;
+      z-index: 1000;
     }
 
     .nav-container {
-      max-width: 1200px;
+      max-width: var(--max-width);
       margin: 0 auto;
-      padding: 1rem 2rem;
+      padding: 1rem 1.5rem;
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -49,18 +56,42 @@
 
     .logo {
       text-decoration: none;
+      z-index: 1001;
     }
 
     .logo h1 {
-      font-size: 1.8rem;
+      font-size: clamp(1.4rem, 4vw, 1.8rem);
       font-weight: 800;
+      letter-spacing: -0.02em;
     }
 
     .logo h1 span.team { color: #ffffff; }
     .logo h1 span.dekho { color: var(--secondary); }
 
+    /* Hamburger Menu Icon */
+    .menu-toggle {
+      display: none;
+      flex-direction: column;
+      gap: 6px;
+      cursor: pointer;
+      background: none;
+      border: none;
+      padding: 8px;
+      z-index: 1001;
+    }
+
+    .menu-toggle span {
+      display: block;
+      width: 26px;
+      height: 3px;
+      background-color: #ffffff;
+      border-radius: 3px;
+      transition: all 0.3s ease-in-out;
+    }
+
     nav {
       display: flex;
+      align-items: center;
       gap: 2rem;
     }
 
@@ -68,8 +99,9 @@
       color: #f1f5f9;
       text-decoration: none;
       font-weight: 600;
-      font-size: 1rem;
-      transition: color 0.2s;
+      font-size: 0.95rem;
+      padding: 0.5rem 0.75rem;
+      transition: color 0.2s ease, opacity 0.2s;
     }
 
     nav a:hover {
@@ -79,36 +111,42 @@
     /* Hero Section */
     .hero {
       text-align: center;
-      padding: 4rem 2rem 2rem;
-      max-width: 800px;
+      padding: clamp(3rem, 8vw, 5rem) 1.5rem 2rem;
+      max-width: 850px;
       margin: 0 auto;
     }
 
     .hero h2 {
-      font-size: 2.8rem;
+      font-size: clamp(2rem, 6vw, 3.2rem);
       font-weight: 800;
-      margin-bottom: 1rem;
-      background: linear-gradient(to right, #ffffff, var(--secondary));
+      line-height: 1.15;
+      margin-bottom: 1.25rem;
+      letter-spacing: -0.03em;
+      background: linear-gradient(to right, #ffffff, #a5f3fc, var(--secondary));
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
 
     .hero p {
-      font-size: 1.2rem;
+      font-size: clamp(1rem, 3vw, 1.25rem);
       color: var(--text-muted);
-      margin-bottom: 1.5rem;
+      margin-bottom: 2rem;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
     }
 
     .tagline-badge {
-      display: inline-block;
+      display: inline-flex;
+      align-items: center;
       background: rgba(0, 180, 166, 0.1);
-      border: 1px solid var(--secondary);
+      border: 1px solid rgba(0, 180, 166, 0.3);
       color: var(--secondary);
       padding: 0.5rem 1.2rem;
       border-radius: 9999px;
-      font-weight: bold;
-      font-size: 0.95rem;
-      margin-bottom: 2.5rem;
+      font-weight: 700;
+      font-size: 0.9rem;
+      margin-bottom: 1rem;
     }
 
     /* Toggle Switch */
@@ -116,21 +154,23 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      gap: 1rem;
-      margin-bottom: 3rem;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-bottom: clamp(2.5rem, 6vw, 4rem);
+      padding: 0 1rem;
     }
 
     .toggle-label {
       font-weight: 600;
-      font-size: 1.1rem;
+      font-size: 1rem;
       color: #f1f5f9;
     }
 
     .toggle-switch {
       position: relative;
       display: inline-block;
-      width: 60px;
-      height: 34px;
+      width: 56px;
+      height: 30px;
     }
 
     .toggle-switch input {
@@ -142,24 +182,21 @@
     .slider {
       position: absolute;
       cursor: pointer;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
+      top: 0; left: 0; right: 0; bottom: 0;
       background-color: #475569;
-      transition: .4s;
+      transition: .3s;
       border-radius: 34px;
     }
 
     .slider:before {
       position: absolute;
       content: "";
-      height: 26px;
-      width: 26px;
+      height: 22px;
+      width: 22px;
       left: 4px;
       bottom: 4px;
       background-color: white;
-      transition: .4s;
+      transition: .3s;
       border-radius: 50%;
     }
 
@@ -175,81 +212,90 @@
       background: #e11d48;
       color: white;
       font-size: 0.75rem;
-      font-weight: bold;
-      padding: 0.2rem 0.6rem;
-      border-radius: 4px;
+      font-weight: 700;
+      padding: 0.25rem 0.6rem;
+      border-radius: 6px;
       text-transform: uppercase;
+      letter-spacing: 0.02em;
     }
 
-    /* Pricing Grid */
+    /* Pricing Grid Grid layout optimized for all viewport breakpoints */
     .pricing-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 1.5rem;
-      max-width: 1200px;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 2rem;
+      max-width: var(--max-width);
       margin: 0 auto;
-      padding: 0 2rem 4rem;
+      padding: 0 1.5rem 4rem;
+      align-items: stretch;
+    }
+
+    /* Ultra-wide monitors mapping control */
+    @media (min-width: 1400px) {
+      .pricing-grid {
+        grid-template-columns: repeat(5, 1fr);
+        gap: 1.25rem;
+      }
     }
 
     .pricing-card {
       background: var(--card-bg);
       border: 1px solid rgba(255, 255, 255, 0.05);
-      border-radius: 16px;
-      padding: 2rem 1.5rem;
+      border-radius: 20px;
+      padding: 2.25rem 1.75rem;
       display: flex;
       flex-direction: column;
       position: relative;
-      transition: transform 0.3s, box-shadow 0.3s, border-color 0.3s;
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s, border-color 0.3s;
     }
 
     .pricing-card:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-      border-color: rgba(255, 255, 255, 0.1);
+      transform: translateY(-6px);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+      border-color: rgba(0, 180, 166, 0.3);
     }
 
-    /* Highlighted / Popular Card */
+    /* Popular / Featured Card design */
     .pricing-card.popular {
-      background: radial-gradient(circle at top right, #1e293b, #1a2d4e);
+      background: radial-gradient(circle at top right, #1e293b, #13233f);
       border: 2px solid var(--secondary);
-      transform: scale(1.03);
-    }
-
-    .pricing-card.popular:hover {
-      transform: scale(1.05) translateY(-5px);
-      box-shadow: 0 12px 40px rgba(0, 180, 166, 0.2);
     }
 
     .popular-badge {
       position: absolute;
-      top: -15px;
+      top: -14px;
       left: 50%;
       transform: translateX(-50%);
-      background: var(--secondary);
+      background: linear-gradient(90deg, var(--secondary), #2dd4bf);
       color: #0f172a;
       font-weight: 800;
       text-transform: uppercase;
-      font-size: 0.75rem;
-      padding: 0.3rem 1rem;
+      font-size: 0.725rem;
+      padding: 0.35rem 1.2rem;
       border-radius: 9999px;
-      letter-spacing: 0.05em;
+      letter-spacing: 0.06em;
+      box-shadow: 0 4px 12px rgba(0, 180, 166, 0.3);
+      white-space: nowrap;
     }
 
     .plan-name {
-      font-size: 1.4rem;
+      font-size: 1.5rem;
       font-weight: 700;
-      text-transform: capitalize;
       margin-bottom: 0.5rem;
     }
 
     .plan-price-container {
-      margin-bottom: 1.5rem;
+      margin-bottom: 1.75rem;
+      display: flex;
+      align-items: baseline;
+      gap: 0.25rem;
     }
 
     .plan-price {
-      font-size: 2.5rem;
+      font-size: 2.75rem;
       font-weight: 800;
       color: #ffffff;
+      letter-spacing: -0.02em;
     }
 
     .plan-period {
@@ -259,20 +305,17 @@
 
     .plan-features {
       list-style: none;
-      margin-bottom: 2rem;
+      margin-bottom: 2.25rem;
       flex-grow: 1;
     }
 
     .plan-features li {
-      margin-bottom: 0.75rem;
-      font-size: 0.9rem;
+      margin-bottom: 0.9rem;
+      font-size: 0.925rem;
       display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-
-    .plan-features li.included-feature {
-      color: #f1f5f9;
+      align-items: flex-start;
+      gap: 0.75rem;
+      color: #cbd5e1;
     }
 
     .plan-features li svg {
@@ -280,26 +323,28 @@
       height: 18px;
       fill: var(--secondary);
       flex-shrink: 0;
+      margin-top: 2px;
     }
 
     .btn-upgrade {
       display: block;
       width: 100%;
-      background: rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.06);
       color: #ffffff;
       text-align: center;
       text-decoration: none;
-      padding: 0.8rem;
-      border-radius: 8px;
+      padding: 0.9rem;
+      border-radius: 12px;
       font-weight: 700;
-      font-size: 1rem;
-      transition: all 0.2s;
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      font-size: 0.95rem;
+      transition: all 0.2s ease;
+      border: 1px solid rgba(255, 255, 255, 0.08);
     }
 
     .btn-upgrade:hover {
       background: #ffffff;
-      color: var(--primary);
+      color: var(--bg-dark);
+      border-color: #ffffff;
     }
 
     .popular .btn-upgrade {
@@ -310,115 +355,192 @@
 
     .popular .btn-upgrade:hover {
       background: #ffffff;
-      color: var(--primary);
-      box-shadow: 0 4px 12px rgba(255, 255, 255, 0.2);
+      color: var(--bg-dark);
+      box-shadow: 0 8px 20px rgba(255, 255, 255, 0.15);
     }
 
     /* Core Features List */
     .core-features-section {
-      max-width: 1000px;
-      margin: 2rem auto 5rem;
-      padding: 2rem;
-      background: rgba(30, 41, 59, 0.5);
-      border-radius: 16px;
-      border: 1px solid rgba(255, 255, 255, 0.05);
+      max-width: var(--max-width);
+      margin: 2rem auto clamp(4rem, 10vw, 6rem);
+      padding: clamp(2rem, 5vw, 3rem) 1.5rem;
+      background: rgba(30, 41, 59, 0.4);
+      border-radius: 24px;
+      border: 1px solid rgba(255, 255, 255, 0.04);
       text-align: center;
     }
 
     .core-features-section h3 {
-      font-size: 1.8rem;
-      margin-bottom: 1.5rem;
+      font-size: clamp(1.4rem, 4vw, 2rem);
+      font-weight: 700;
+      margin-bottom: 2.5rem;
       color: #ffffff;
     }
 
     .core-features-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 1.5rem;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 2rem;
     }
 
     .core-feature-item {
       padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
     }
 
     .core-feature-item svg {
-      width: 32px;
-      height: 32px;
+      width: 36px;
+      height: 36px;
       fill: var(--secondary);
-      margin-bottom: 0.5rem;
+      margin-bottom: 1rem;
     }
 
     .core-feature-item p {
       font-weight: 600;
       font-size: 1rem;
+      color: #e2e8f0;
     }
 
     /* FAQ Section */
     .faq-section {
-      max-width: 800px;
-      margin: 0 auto 6rem;
-      padding: 0 2rem;
+      max-width: 850px;
+      margin: 0 auto clamp(4rem, 10vw, 6rem);
+      padding: 0 1.5rem;
     }
 
     .faq-section h3 {
-      font-size: 2.2rem;
+      font-size: clamp(1.6rem, 5vw, 2.25rem);
+      font-weight: 800;
       text-align: center;
       margin-bottom: 3rem;
       color: #ffffff;
     }
 
     .faq-item {
-      margin-bottom: 1.5rem;
+      margin-bottom: 1.25rem;
       background: var(--card-bg);
-      border: 1px solid rgba(255, 255, 255, 0.05);
-      border-radius: 12px;
-      padding: 1.5rem;
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      border-radius: 16px;
+      padding: 1.75rem;
     }
 
     .faq-item h4 {
-      font-size: 1.15rem;
-      margin-bottom: 0.5rem;
+      font-size: 1.1rem;
+      margin-bottom: 0.6rem;
       color: var(--secondary);
+      font-weight: 600;
     }
 
     .faq-item p {
       color: var(--text-muted);
       font-size: 0.95rem;
+      line-height: 1.55;
     }
 
     /* Footer */
     footer {
-      background: #090d16;
+      background: #060913;
       border-top: 1px solid rgba(255, 255, 255, 0.05);
-      padding: 3rem 2rem;
+      padding: 2.5rem 1.5rem;
       text-align: center;
       color: var(--text-muted);
     }
 
     footer p {
-      font-size: 0.95rem;
+      font-size: 0.9rem;
     }
 
-    /* Responsive adjustments */
+    /* Responsive Breakpoints Media Queries
+    */
     @media (max-width: 1024px) {
+      /* Remove scaling on tablet to avoid overlap issues */
       .pricing-card.popular {
         transform: scale(1);
       }
       .pricing-card.popular:hover {
-        transform: translateY(-5px);
+        transform: translateY(-6px);
+      }
+    }
+
+    @media (max-width: 768px) {
+      /* Mobile Menu Toggle Activates */
+      .menu-toggle {
+        display: flex;
+      }
+
+      nav {
+        position: fixed;
+        top: 0;
+        right: -100%;
+        width: 280px;
+        height: 100vh;
+        background: #0f172a;
+        box-shadow: -10px 0 30px rgba(0,0,0,0.5);
+        flex-direction: column;
+        align-items: flex-start;
+        justify-content: flex-start;
+        padding: 6rem 2rem 2rem;
+        gap: 1.5rem;
+        transition: right 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        z-index: 1000;
+      }
+
+      /* When Javascript injects active class */
+      nav.active {
+        right: 0;
+      }
+
+      /* Visual state animations for burger menu when open */
+      .menu-toggle.active span:nth-child(1) {
+        transform: translateY(9px) rotate(45deg);
+      }
+      .menu-toggle.active span:nth-child(2) {
+        opacity: 0;
+      }
+      .menu-toggle.active span:nth-child(3) {
+        transform: translateY(-9px) rotate(-45deg);
+      }
+
+      nav a {
+        font-size: 1.2rem;
+        width: 100%;
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+        padding-bottom: 0.75rem;
+      }
+
+      .pricing-grid {
+        grid-template-columns: 1fr; /* Single column on mobile */
+        max-width: 450px; /* Constrain width for ideal readability */
+      }
+    }
+
+    @media (max-width: 480px) {
+      .pricing-card {
+        padding: 2rem 1.25rem;
+      }
+      .plan-price {
+        font-size: 2.5rem;
       }
     }
   </style>
 </head>
 <body>
 
-  <!-- Header -->
   <header>
     <div class="nav-container">
       <a href="/" class="logo">
         <h1><span class="team">Team</span><span class="dekho">Dekho</span></h1>
       </a>
-      <nav>
+      
+      <button class="menu-toggle" id="mobile-menu-btn" aria-label="Toggle navigation menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+
+      <nav id="nav-menu">
         <a href="/">Home</a>
         <a href="/pricing">Pricing</a>
         <a href="/host/login">Login</a>
@@ -426,14 +548,12 @@
     </div>
   </header>
 
-  <!-- Hero -->
   <section class="hero">
+    <div class="tagline-badge">🚀 13x cheaper than Zoom</div>
     <h2>Choose the Perfect Plan for Your Team</h2>
     <p>Flexible options designed for meetings of any size. Upgrade or downgrade anytime.</p>
-    <span class="tagline-badge">🚀 13x cheaper than Zoom</span>
   </section>
 
-  <!-- Monthly/Yearly Toggle -->
   <div class="toggle-container">
     <span class="toggle-label">Monthly</span>
     <label class="toggle-switch">
@@ -444,10 +564,8 @@
     <span class="yearly-discount">2 Months Free!</span>
   </div>
 
-  <!-- Pricing Cards Grid -->
   <div class="pricing-grid">
 
-    <!-- Plan 1: Free -->
     <div class="pricing-card">
       <div class="plan-name">Free</div>
       <div class="plan-price-container">
@@ -455,19 +573,18 @@
         <span class="plan-period" id="period-free">/month</span>
       </div>
       <ul class="plan-features">
-        <li class="included-feature">
+        <li>
           <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
-          50 participants limit
+          <span>50 participants limit</span>
         </li>
-        <li class="included-feature">
+        <li>
           <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
-          60 minutes max duration
+          <span>60 minutes max duration</span>
         </li>
       </ul>
       <a href="/host/login" class="btn-upgrade">Get Started</a>
     </div>
 
-    <!-- Plan 2: Starter -->
     <div class="pricing-card">
       <div class="plan-name">Starter</div>
       <div class="plan-price-container">
@@ -475,19 +592,18 @@
         <span class="plan-period" id="period-starter">/month</span>
       </div>
       <ul class="plan-features">
-        <li class="included-feature">
+        <li>
           <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
-          100 participants limit
+          <span>100 participants limit</span>
         </li>
-        <li class="included-feature">
+        <li>
           <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
-          90 minutes max duration
+          <span>90 minutes max duration</span>
         </li>
       </ul>
       <a href="/host/login" class="btn-upgrade">Upgrade</a>
     </div>
 
-    <!-- Plan 3: Basic (Most Popular) -->
     <div class="pricing-card popular">
       <div class="popular-badge">Most Popular</div>
       <div class="plan-name">Basic</div>
@@ -496,19 +612,18 @@
         <span class="plan-period" id="period-basic">/month</span>
       </div>
       <ul class="plan-features">
-        <li class="included-feature">
+        <li>
           <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
-          250 participants limit
+          <span>250 participants limit</span>
         </li>
-        <li class="included-feature">
+        <li>
           <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
-          3 hours max duration
+          <span>3 hours max duration</span>
         </li>
       </ul>
       <a href="/host/login" class="btn-upgrade">Upgrade</a>
     </div>
 
-    <!-- Plan 4: Pro -->
     <div class="pricing-card">
       <div class="plan-name">Pro</div>
       <div class="plan-price-container">
@@ -516,19 +631,18 @@
         <span class="plan-period" id="period-pro">/month</span>
       </div>
       <ul class="plan-features">
-        <li class="included-feature">
+        <li>
           <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
-          500 participants limit
+          <span>500 participants limit</span>
         </li>
-        <li class="included-feature">
+        <li>
           <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
-          No time limit
+          <span>No time limit</span>
         </li>
       </ul>
       <a href="/host/login" class="btn-upgrade">Upgrade</a>
     </div>
 
-    <!-- Plan 5: Business -->
     <div class="pricing-card">
       <div class="plan-name">Business</div>
       <div class="plan-price-container">
@@ -536,17 +650,17 @@
         <span class="plan-period" id="period-business">/month</span>
       </div>
       <ul class="plan-features">
-        <li class="included-feature">
+        <li>
           <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
-          1000 participants limit
+          <span>1000 participants limit</span>
         </li>
-        <li class="included-feature">
+        <li>
           <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
-          No time limit
+          <span>No time limit</span>
         </li>
-        <li class="included-feature">
+        <li>
           <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
-          Priority support
+          <span>Priority support</span>
         </li>
       </ul>
       <a href="/host/login" class="btn-upgrade">Upgrade</a>
@@ -554,7 +668,6 @@
 
   </div>
 
-  <!-- Included in All Plans -->
   <section class="core-features-section">
     <h3>Every Plan Includes These Core Features</h3>
     <div class="core-features-grid">
@@ -576,7 +689,7 @@
       </div>
       <div class="core-feature-item">
         <svg viewBox="0 0 24 24"><path d="M21 3H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-9 12H4v-2h8v2zm8-4H4V9h16v2z"/></svg>
-        <p>Whiteboard & Collaborative Tools</p>
+        <p>Whiteboard & Tools</p>
       </div>
       <div class="core-feature-item">
         <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
@@ -585,7 +698,6 @@
     </div>
   </section>
 
-  <!-- FAQ Section -->
   <section class="faq-section">
     <h3>Frequently Asked Questions</h3>
     <div class="faq-item">
@@ -602,13 +714,29 @@
     </div>
   </section>
 
-  <!-- Footer -->
   <footer>
     <p>&copy; 2026 TeamDekho by Sayog Kushwah, Indore</p>
   </footer>
 
-  <!-- Dynamic pricing toggle script -->
   <script>
+    // Mobile Navigation logic
+    const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+    const navMenu = document.getElementById('nav-menu');
+
+    mobileMenuBtn.addEventListener('click', () => {
+      mobileMenuBtn.classList.toggle('active');
+      navMenu.classList.toggle('active');
+    });
+
+    // Close mobile menu when a link is clicked
+    document.querySelectorAll('nav a').forEach(link => {
+      link.addEventListener('click', () => {
+        mobileMenuBtn.classList.remove('active');
+        navMenu.classList.remove('active');
+      });
+    });
+
+    // Pricing Switch logic
     const pricingToggle = document.getElementById('pricing-toggle');
     
     const prices = {
