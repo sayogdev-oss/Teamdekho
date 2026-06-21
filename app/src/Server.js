@@ -3391,7 +3391,8 @@ function startServer() {
             if (!roomExists(socket)) return;
             const room = getRoom(socket);
             const peer = room.getPeer(socket.id);
-            if (!peer || !peer.peer_info.peer_presenter) return;
+            const isPresenterCheck = isPeerPresenter(socket.room_id, socket.id, peer.peer_info?.peer_name, peer.peer_info?.peer_uuid);
+            if (!peer || !isPresenterCheck) return;
             const targetPeer = room.getPeer(peerId);
             if (!targetPeer) return;
             targetPeer.updateCoHost(true);
