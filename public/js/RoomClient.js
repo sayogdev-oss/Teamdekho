@@ -2299,11 +2299,7 @@ class RoomClient {
                     encodings: encodings,
                     codecs: codec,
                 });
-                params.encodings = [
-                  { rid: 'r0', maxBitrate: 100000, scaleResolutionDownBy: 4, maxFramerate: 15 },
-                  { rid: 'r1', maxBitrate: 300000, scaleResolutionDownBy: 2, maxFramerate: 24 },
-                  { rid: 'r2', maxBitrate: 600000, scaleResolutionDownBy: 1, maxFramerate: 30 }
-                ];
+                params.encodings = encodings;
                 params.codecs = codec;
                 params.codecOptions = {
                   videoGoogleStartBitrate: 300
@@ -2862,7 +2858,7 @@ class RoomClient {
                 console.log('WEBCAM ENCODING: VP9 or AV1 with SVC');
                 encodings = [
                     {
-                        maxBitrate: 5000000,
+                        maxBitrate: 1200000,
                         scalabilityMode: this.webcamScalabilityMode || 'L3T3_KEY',
                     },
                 ];
@@ -2871,7 +2867,7 @@ class RoomClient {
                 encodings = [
                     {
                         scaleResolutionDownBy: 1,
-                        maxBitrate: 5000000,
+                        maxBitrate: 1200000,
                         scalabilityMode: this.webcamScalabilityMode || 'L1T3',
                     },
                 ];
@@ -2885,7 +2881,7 @@ class RoomClient {
                 if (this.numSimulcastStreamsWebcam > 2) {
                     encodings.unshift({
                         scaleResolutionDownBy: 4,
-                        maxBitrate: 500000,
+                        maxBitrate: 150000,
                         scalabilityMode: this.webcamScalabilityMode || 'L1T3',
                     });
                 }
@@ -2942,7 +2938,7 @@ class RoomClient {
                 console.log('SCREEN ENCODING: VP9 or AV1 with SVC');
                 encodings = [
                     {
-                        maxBitrate: 5000000,
+                        maxBitrate: 1200000,
                         scalabilityMode: this.sharingScalabilityMode || 'L3T3',
                         dtx: true,
                     },
@@ -2952,7 +2948,7 @@ class RoomClient {
                 encodings = [
                     {
                         scaleResolutionDownBy: 1,
-                        maxBitrate: 5000000,
+                        maxBitrate: 1200000,
                         scalabilityMode: this.sharingScalabilityMode || 'L1T3',
                         dtx: true,
                     },
@@ -2979,7 +2975,7 @@ class RoomClient {
             encodings = [
                 {
                     scaleResolutionDownBy: 1,
-                    maxBitrate: 5000000,
+                    maxBitrate: 1200000,
                     dtx: true,
                 },
             ];
@@ -3774,6 +3770,14 @@ class RoomClient {
             case mediaType.video:
             case mediaType.screen:
                 this.removeVideoOff(remotePeerId);
+                // Remove any stale/duplicate video tile for this peer before creating a new one
+                if (!remoteIsScreen) {
+                    const staleVideo = document.querySelector(`video[name="${remotePeerId}"]`);
+                    if (staleVideo) {
+                        const staleContainer = staleVideo.closest('.Camera');
+                        if (staleContainer) staleContainer.remove();
+                    }
+                }
 
                 d = document.createElement('div');
                 d.className = 'Camera';
