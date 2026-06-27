@@ -1,0 +1,162 @@
+'use strict';
+
+// ####################################################
+// RESPONSIVE PARTICIPANTS VIEW
+// ####################################################
+
+function renderGridForPage(visiblePeerIds) {
+    // Do nothing - let MiroTalk handle its own grid rendering
+    // Pagination pause/resume handles bandwidth, not DOM visibility
+}
+
+// ####################################################
+// RESPONSIVE PARTICIPANTS VIEW
+// ####################################################
+
+let customRatio = true;
+let isHideALLVideosActive = false;
+
+// aspect       0      1      2      3       4
+let ratios = ['0:0', '4:3', '16:9', '1:1', '1:2'];
+let aspect = 2;
+
+let ratio = getAspectRatio();
+
+function getAspectRatio() {
+    customRatio = aspect == 0 ? true : false;
+    var ratio = ratios[aspect].split(':');
+    return ratio[1] / ratio[0];
+}
+
+function setAspectRatio(i) {
+    aspect = i;
+    ratio = getAspectRatio();
+    resizeVideoMedia();
+}
+
+// Intersection Observer for Auto-Pause
+const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+        const videos = entry.target.querySelectorAll('video');
+        videos.forEach(video => {
+            if (entry.isIntersecting) {
+                video.play().catch(e => console.error("Play error", e));
+            } else {
+                video.pause();
+            }
+        });
+    });
+}, { threshold: 0.5 });
+
+function resizeVideoMedia() {
+    const wrapper = document.getElementById('swipeablePagesWrapper');
+    const pinContainer = document.getElementById('videoPinMediaContainer');
+    const mediaContainer = document.getElementById('videoMediaContainer');
+    
+    if (!wrapper) return;
+    
+    // Clear wrapper
+    wrapper.innerHTML = '';
+    
+    // Get all cameras
+    const cameras = Array.from(pinContainer.children).concat(Array.from(mediaContainer.children));
+    if (cameras.length === 0) return;
+    
+    // Page 1: Main Stage
+    const page1 = document.createElement('div');
+    page1.className = 'zoom-page';
+    page1.style.cssText = 'min-width:100vw; height:100dvh; scroll-snap-align:start; display:flex; justify-content:center; align-items:center;';
+    
+    const cam0 = cameras[0];
+    cam0.style.width = '100%';
+    cam0.style.height = '100%';
+    cam0.style.objectFit = 'contain';
+    
+    page1.appendChild(cam0);
+    wrapper.appendChild(page1);
+    observer.observe(page1);
+    
+    // Pages 2+: Grid
+    const others = cameras.slice(1);
+    for (let i = 0; i < others.length; i += 6) {
+        const page = document.createElement('div');
+        page.className = 'zoom-page';
+        page.style.cssText = 'min-width:100vw; height:100dvh; scroll-snap-align:start; display:grid; grid-template-columns: 1fr 1fr; grid-template-rows: repeat(3, 1fr); gap: 10px; padding: 10px;';
+        
+        others.slice(i, i + 6).forEach(cam => {
+            cam.style.width = '100%';
+            cam.style.height = '100%';
+            cam.style.objectFit = 'cover';
+            page.appendChild(cam);
+        });
+        
+        wrapper.appendChild(page);
+        observer.observe(page);
+    }
+}
+window.resizeVideoMedia = resizeVideoMedia;
+
+// ####################################################
+// BREAKPOINTS
+// ####################################################
+
+const MOBILE_BREAKPOINT = 500;
+const TABLET_BREAKPOINT = 580;
+const DESKTOP_BREAKPOINT = 730;
+const CUSTOM_BREAKPOINT = 680;
+
+// ####################################################
+// RESPONSIVE CHAT
+// ####################################################
+
+function resizeChatRoom() {
+    if (!rc || rc.isMobileDevice || !rc.isChatOpen || rc.isChatPinned) return;
+
+    const windowWidth = window.innerWidth;
+    const windowHeight = window.innerHeight;
+
+    windowWidth <= DESKTOP_BREAKPOINT || windowHeight <= DESKTOP_BREAKPOINT ? rc.chatMaximize() : rc.chatMinimize();
+}
+
+// ####################################################
+// RESPONSIVE TRANSCRIPTION
+// ####################################################
+
+function resizeTranscriptionRoom() {
+    if (
+        window.isMobileDevice ||
+        !Boolean(transcription.speechTranscription) ||
+        transcription.isHidden ||
+        transcription.isPinned
+    )
+        return;
+
+    const windowWidth = window.innerWidth;
+    const windowHeight = window.innerHeight;
+
+    windowWidth <= CUSTOM_BREAKPOINT || windowHeight <= CUSTOM_BREAKPOINT
+        ? transcription.maximize()
+        : transcription.minimize();
+}
+
+// ####################################################
+// WINDOW LOAD/RESIZE EVENT
+// ####################################################
+
+window.addEventListener(
+    'load',
+    function (event) {
+        resizeVideoMedia();
+        let resizeTimeout;
+        window.addEventListener('resize', function () {
+            if (resizeTimeout) cancelAnimationFrame(resizeTimeout);
+            resizeTimeout = requestAnimationFrame(function () {
+                resizeVideoMedia();
+                resizeChatRoom();
+                resizeTranscriptionRoom();
+            });
+        });
+    },
+    false
+);
+

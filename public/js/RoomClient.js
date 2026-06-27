@@ -254,8 +254,6 @@ class RoomClient {
     ) {
         this.room_id = room_id;
         this.peer_id = socket.id;
-        this.coHostPeers = new Set();
-        this.isCoHost = false;
         this.peer_name = peer_name;
         this.peer_uuid = peer_uuid;
         this.peer_info = peer_info;
@@ -467,6 +465,7 @@ class RoomClient {
         this.screenProducerId = null;
         this.audioProducerId = null;
         this.audioConsumers = new Map();
+        this.pendingResumes = new Set(); // Track in-flight resume requests
 
         this.peers = new Map();
         this.consumers = new Map();
@@ -906,6 +905,113 @@ class RoomClient {
     }
 
     // ####################################################
+    // GRID SORTING & PAGINATION LOGIC
+    // ####################################################
+
+    /**
+     * Gets a sorted list of peer IDs, prioritizing Host/Co-Host and Active Speaker.
+     * @returns {Array<string>} Sorted peer IDs.
+     */
+    getSortedPeers() {
+        const peers = Array.from(this.peers.keys());
+        
+        // Priority: 1. Host/Co-Host, 2. Manual Pin, 3. Active Speaker, 4. Others
+        return peers.sort((a, b) => {
+            const peerA = this.peers.get(a);
+            const peerB = this.peers.get(b);
+            
+            // Helper to check priority
+            const getPriority = (peer) => {
+                let p = 0;
+                if (peer.peer_info.peer_presenter || peer.peer_info.peer_cohost) p += 100;
+                if (peer.id === this.pinnedVideoPlayerId) p += 50;
+                // Active speaker check - needs integration
+                return p;
+            };
+
+            return getPriority(peerB) - getPriority(peerA);
+        });
+    }
+
+    updateGrid() {
+        const sortedPeers = this.getSortedPeers();
+        if (typeof renderGridForPage === 'function') {
+            renderGridForPage(sortedPeers);
+        }
+    }
+
+    // ####################################################
+    // CONSUMER PAUSE/RESUME FOR BANDWIDTH OPTIMIZATION
+    // ####################################################
+
+    /**
+     * Pauses consumers for peers not on the current page.
+     * @param {Array<string>} visiblePeerIds - List of peer IDs to keep active.
+     */
+    pauseConsumersForHiddenPeers(visiblePeerIds) {
+        this.consumers.forEach((consumer, consumerId) => {
+            const peerId = consumer.appData.peerId;
+            if (!visiblePeerIds.includes(peerId) && !consumer.paused) {
+                console.log(`Pausing consumer ${consumerId} for peer ${peerId}`);
+                consumer.pause();
+                this.socket.emit('pauseConsumer', { peerId: peerId });
+            }
+        });
+    }
+
+    /**
+     * Resumes consumers for peers on the current page.
+     * @param {Array<string>} visiblePeerIds - List of peer IDs to activate.
+     */
+    resumeConsumersForVisiblePeers(visiblePeerIds) {
+        this.consumers.forEach((consumer, consumerId) => {
+            const peerId = consumer.appData.peerId;
+            if (visiblePeerIds.includes(peerId) && consumer.paused) {
+                this.resumeConsumer(consumerId);
+            }
+        });
+    }
+
+    /**
+     * Resumes a consumer safely.
+     * @param {string} consumerId
+     */
+    async resumeConsumer(consumerId) {
+        const consumer = this.consumers.get(consumerId);
+        if (!consumer) return;
+        if (this.pendingResumes.has(consumerId)) {
+            console.log(`Skipped resume: Consumer ${consumerId} already has a pending resume request.`);
+            return;
+        }
+        if (consumer.closed || !consumer.paused) return;
+
+        console.log(`Resuming consumer ${consumerId} for peer ${consumer.appData.peerId}`);
+        this.pendingResumes.add(consumerId);
+        try {
+            await consumer.resume();
+            this.socket.emit('resumeConsumer', { peerId: consumer.appData.peerId });
+        } catch (error) {
+            console.error(`Error resuming consumer ${consumerId} for peer ${consumer.appData.peerId}:`, error);
+        } finally {
+            this.pendingResumes.delete(consumerId);
+        }
+    }
+
+    async ensureTransport(type) {
+        if (type === 'producer') {
+            if (!this.producerTransport || this.producerTransport.closed) {
+                console.warn('Producer transport is closed or missing. Re-initializing...');
+                await this.initProducerTransport(this.device);
+            }
+        } else if (type === 'consumer') {
+            if (!this.consumerTransport || this.consumerTransport.closed) {
+                console.warn('Consumer transport is closed or missing. Re-initializing...');
+                await this.initConsumerTransport(this.device);
+            }
+        }
+    }
+
+    // ####################################################
     // TRANSPORTS
     // ####################################################
 
@@ -1262,46 +1368,47 @@ class RoomClient {
         this.socket.on('breakoutRoomHelp', this.handleBreakoutRoomHelp);
         this.socket.on('followMe', this.handleFollowMeData);
         this.socket.on('chatReaction', this.handleChatReaction);
-        this.socket.on('coHostUpdate', ({ peerId, isCoHost }) => {
-            if (isCoHost) {
-                this.coHostPeers.add(peerId);
-            } else {
-                this.coHostPeers.delete(peerId);
+        this.socket.on('coHostUpdate', ({ peerId, isCoHost: newCoHostStatus }) => {
+            // Update remote peer's stored info (used by badges on video tiles and participant list)
+            const peerData = this.peers && this.peers.get(peerId);
+            if (peerData && peerData.peer_info) {
+                peerData.peer_info.peer_cohost = newCoHostStatus;
             }
+
+            // Update the participant-list menu item label, using whatever ID pattern Step 1 found
             const menuItem = this.getId(`${peerId}___pCoHost`);
             if (menuItem) {
-                menuItem.querySelector('.label') 
-                    ? menuItem.querySelector('.label').innerText = isCoHost ? 'Remove Co-Host' : 'Make Co-Host'
-                    : menuItem.innerText = isCoHost ? 'Remove Co-Host' : 'Make Co-Host';
+                const label = menuItem.querySelector('.label');
+                const text = newCoHostStatus ? 'Remove Co-Host' : 'Make Co-Host';
+                label ? (label.innerText = text) : (menuItem.innerText = text);
             }
+
+            // If this update is about ME, update the global isCoHost flag (Room.js scope)
+            // and refresh my own peer_info so my own UI/permission checks reflect it.
             if (peerId === this.peer_id) {
-                this.isCoHost = isCoHost;
+                isCoHost = newCoHostStatus;
+                this.peer_info.peer_cohost = newCoHostStatus;
+                this.userLog(
+                    'info',
+                    newCoHostStatus ? 'You are now a Co-Host' : 'Co-Host role removed',
+                    'top-end',
+                    4000
+                );
+            }
+
+            // Update video tile badge (re-render name text on both possible tile locations)
+            const videoNameEl = this.getId(peerId + '__name');
+            if (videoNameEl && peerId !== this.peer_id) {
+                const baseName = videoNameEl.innerText.replace(/\s*⭐Co-Host\s*$/, '').replace(/^🎯\s*/, '');
+                const presenterIcon = videoNameEl.innerText.startsWith('🎯') ? '🎯 ' : '';
+                videoNameEl.innerText = presenterIcon + baseName + (newCoHostStatus ? ' ⭐Co-Host' : '');
             }
         });
         this.socket.on('dominantSpeaker', ({ peerId }) => {
-            const visible = (typeof getVisiblePeersForPage === 'function')
-                ? getVisiblePeersForPage(currentPage)
-                : (window.getVisiblePeersForPage ? window.getVisiblePeersForPage(window.currentPage) : []);
-
-            if (visible.length && !visible.includes(peerId)) {
-                const oldestVisible = visible[visible.length - 1];
-                socket.emit('pauseConsumer', { peerId: oldestVisible });
-                socket.emit('resumeConsumer', { peerId: peerId });
-
-                const oldEl = document.getElementById('video-' + oldestVisible);
-                const newEl = document.getElementById('video-' + peerId);
-                if (oldEl) oldEl.style.display = 'none';
-                if (newEl) newEl.style.display = 'block';
-            }
+            console.log('Dominant speaker changed:', peerId);
+            this.updateGrid();
         });
-        this.socket.on('coHostUpdate', ({ peerId, isCoHost: coHostStatus }) => {
-            if (peerId === this.peer_info.peer_id) {
-                isCoHost = coHostStatus;
-                this.peer_info.peer_cohost = coHostStatus;
-            }
-            const menuItem = document.getElementById(`cohost-${peerId}`);
-            if (menuItem) menuItem.innerText = coHostStatus ? 'Remove Co-Host' : 'Make Co-Host';
-        });
+
     }
 
     // ####################################################
@@ -2154,6 +2261,7 @@ class RoomClient {
     // ####################################################
 
     async produce(type, deviceId = null, swapCamera = false, init = false) {
+        await this.ensureTransport('producer');
         let mediaConstraints = {};
         let elem;
         let stream;
@@ -2299,7 +2407,11 @@ class RoomClient {
                     encodings: encodings,
                     codecs: codec,
                 });
-                params.encodings = encodings;
+                params.encodings = [
+                  { rid: 'r0', maxBitrate: 100000, scaleResolutionDownBy: 4, maxFramerate: 15 },
+                  { rid: 'r1', maxBitrate: 300000, scaleResolutionDownBy: 2, maxFramerate: 24 },
+                  { rid: 'r2', maxBitrate: 600000, scaleResolutionDownBy: 1, maxFramerate: 30 }
+                ];
                 params.codecs = codec;
                 params.codecOptions = {
                   videoGoogleStartBitrate: 300
@@ -2858,7 +2970,7 @@ class RoomClient {
                 console.log('WEBCAM ENCODING: VP9 or AV1 with SVC');
                 encodings = [
                     {
-                        maxBitrate: 1200000,
+                        maxBitrate: 5000000,
                         scalabilityMode: this.webcamScalabilityMode || 'L3T3_KEY',
                     },
                 ];
@@ -2867,7 +2979,7 @@ class RoomClient {
                 encodings = [
                     {
                         scaleResolutionDownBy: 1,
-                        maxBitrate: 1200000,
+                        maxBitrate: 5000000,
                         scalabilityMode: this.webcamScalabilityMode || 'L1T3',
                     },
                 ];
@@ -2881,7 +2993,7 @@ class RoomClient {
                 if (this.numSimulcastStreamsWebcam > 2) {
                     encodings.unshift({
                         scaleResolutionDownBy: 4,
-                        maxBitrate: 150000,
+                        maxBitrate: 500000,
                         scalabilityMode: this.webcamScalabilityMode || 'L1T3',
                     });
                 }
@@ -2938,7 +3050,7 @@ class RoomClient {
                 console.log('SCREEN ENCODING: VP9 or AV1 with SVC');
                 encodings = [
                     {
-                        maxBitrate: 1200000,
+                        maxBitrate: 5000000,
                         scalabilityMode: this.sharingScalabilityMode || 'L3T3',
                         dtx: true,
                     },
@@ -2948,7 +3060,7 @@ class RoomClient {
                 encodings = [
                     {
                         scaleResolutionDownBy: 1,
-                        maxBitrate: 1200000,
+                        maxBitrate: 5000000,
                         scalabilityMode: this.sharingScalabilityMode || 'L1T3',
                         dtx: true,
                     },
@@ -2975,7 +3087,7 @@ class RoomClient {
             encodings = [
                 {
                     scaleResolutionDownBy: 1,
-                    maxBitrate: 1200000,
+                    maxBitrate: 5000000,
                     dtx: true,
                 },
             ];
@@ -3532,6 +3644,7 @@ class RoomClient {
     // ####################################################
 
     async consume(producer_id, peer_name, peer_info, type) {
+        await this.ensureTransport('consumer');
         try {
             const { consumer, stream, kind } = await this.getConsumeStream(producer_id, peer_info.peer_id, type);
 
@@ -3770,14 +3883,6 @@ class RoomClient {
             case mediaType.video:
             case mediaType.screen:
                 this.removeVideoOff(remotePeerId);
-                // Remove any stale/duplicate video tile for this peer before creating a new one
-                if (!remoteIsScreen) {
-                    const staleVideo = document.querySelector(`video[name="${remotePeerId}"]`);
-                    if (staleVideo) {
-                        const staleContainer = staleVideo.closest('.Camera');
-                        if (staleContainer) staleContainer.remove();
-                    }
-                }
 
                 d = document.createElement('div');
                 d.className = 'Camera';
@@ -4008,6 +4113,7 @@ class RoomClient {
     }
 
     removeConsumer(consumer_id, consumer_kind) {
+        this.pendingResumes.delete(consumer_id);
         if (!this.consumers.get(consumer_id)) return;
 
         console.log('Remove consumer', { consumer_id: consumer_id, consumer_kind: consumer_kind });
@@ -11008,15 +11114,6 @@ class RoomClient {
     // PEER ACTION
     // ####################################################
 
-    makeOrRemoveCoHost(peerId) {
-        const isCurrentlyCoHost = this.coHostPeers && this.coHostPeers.has(peerId);
-        if (isCurrentlyCoHost) {
-            this.socket.emit('removeCoHost', { peerId });
-        } else {
-            this.socket.emit('makeCoHost', { peerId });
-        }
-    }
-
     async peerAction(from_peer_name, id, action, emit = true, broadcast = false, info = true, msg = '') {
         const words = id.split('___');
         const peer_id = words[0];
@@ -11458,15 +11555,12 @@ class RoomClient {
     }
 
     toggleCoHost(peerId) {
-        const isCurrentlyCoHost = document.getElementById(`${peerId}___pCoHost`)?.dataset.cohost === 'true';
+        const peerData = this.peers && this.peers.get(peerId);
+        const isCurrentlyCoHost = peerData?.peer_info?.peer_cohost || false;
         if (isCurrentlyCoHost) {
             this.socket.emit('removeCoHost', { peerId });
-            const btn = document.getElementById(`${peerId}___pCoHost`);
-            if (btn) btn.dataset.cohost = 'false';
         } else {
             this.socket.emit('makeCoHost', { peerId });
-            const btn = document.getElementById(`${peerId}___pCoHost`);
-            if (btn) btn.dataset.cohost = 'true';
         }
     }
 

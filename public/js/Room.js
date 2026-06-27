@@ -6456,7 +6456,7 @@ function getParticipantsList(peers) {
         // NOT ME
         if (socket.id !== peer_id) {
             // PRESENTER HAS MORE OPTIONS
-            if (isRulesActive && isPresenter) {
+            if (isRulesActive && (isPresenter || isCoHost)) {
                 let menuItems = '';
 
                 menuItems += renderParticipantMenuItem(

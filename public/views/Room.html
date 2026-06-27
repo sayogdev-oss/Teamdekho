@@ -1654,6 +1654,12 @@
             <!-- <div class="Camera"></div> -->
         </div>
 
+        <div id="tdPaginationControls" style="display:none; justify-content:center; align-items:center; gap:16px; padding:10px; background:rgba(0,0,0,0.7); border-radius:12px; position:fixed; bottom:80px; left:50%; transform:translateX(-50%); z-index:1000;">
+            <button id="tdPrevPage" onclick="tdChangePage(tdCurrentPage - 1)" style="background:#333; color:white; border:none; padding:8px 18px; border-radius:8px; cursor:pointer; font-size:16px;" disabled>◀ Prev</button>
+            <span id="tdPageIndicator" style="color:white; font-weight:bold; font-size:14px; min-width:60px; text-align:center;">1 / 1</span>
+            <button id="tdNextPage" onclick="tdChangePage(tdCurrentPage + 1)" style="background:#333; color:white; border:none; padding:8px 18px; border-radius:8px; cursor:pointer; font-size:16px;">Next ▶</button>
+        </div>
+
         <div id="localAudio"></div>
         <div id="remoteAudios"></div>
 

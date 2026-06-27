@@ -3263,7 +3263,7 @@ function startServer() {
             if (data.peerId) {
                 const { peerId } = data;
                 for (const consumer of peer.consumers.values()) {
-                    if (consumer.appData && consumer.appData.peerId === peerId) {
+                    if (consumer.appData && consumer.appData.peerId === peerId && consumer.kind === 'video') {
                         try {
                             await consumer.resume();
                             log.debug('Consumer resumed via pagination', { peerId });
@@ -3307,7 +3307,7 @@ function startServer() {
             const peer = getPeer(socket);
             if (!peer) return;
             for (const consumer of peer.consumers.values()) {
-                if (consumer.appData && consumer.appData.peerId === peerId) {
+                if (consumer.appData && consumer.appData.peerId === peerId && consumer.kind === 'video') {
                     try {
                         await consumer.pause();
                         log.debug('Consumer paused via pagination', { peerId });
@@ -3395,6 +3395,17 @@ function startServer() {
             if (!peer || !isPresenterCheck) return;
             const targetPeer = room.getPeer(peerId);
             if (!targetPeer) return;
+            
+            const targetPeerState = room.getPeer(peerId);
+            if (targetPeerState) {
+                if (targetPeerState.peer_info) {
+                    targetPeerState.peer_info.isCoHost = true;
+                    targetPeerState.peer_info.peer_cohost = true;
+                } else {
+                    targetPeerState.isCoHost = true;
+                }
+            }
+
             targetPeer.updateCoHost(true);
             room.broadCast(socket.id, 'coHostUpdate', { peerId, isCoHost: true });
             socket.emit('coHostUpdate', { peerId, isCoHost: true });
@@ -3408,6 +3419,17 @@ function startServer() {
             if (!peer || !peer.peer_info.peer_presenter) return;
             const targetPeer = room.getPeer(peerId);
             if (!targetPeer) return;
+
+            const targetPeerRemove = room.getPeer(peerId);
+            if (targetPeerRemove) {
+                if (targetPeerRemove.peer_info) {
+                    targetPeerRemove.peer_info.isCoHost = false;
+                    targetPeerRemove.peer_info.peer_cohost = false;
+                } else {
+                    targetPeerRemove.isCoHost = false;
+                }
+            }
+
             targetPeer.updateCoHost(false);
             room.broadCast(socket.id, 'coHostUpdate', { peerId, isCoHost: false });
             socket.emit('coHostUpdate', { peerId, isCoHost: false });
@@ -3438,7 +3460,7 @@ function startServer() {
                     room.broadCast(socket.id, 'roomAction', data.action);
                     break;
                 case 'lock':
-                    if (!isPresenter) return;
+                    if (!isPresenter && !isCoHost) return;
                     if (!room.isLocked()) {
                         room.setLocked(true, data.password);
                         room.broadCast(socket.id, 'roomAction', data.action);
@@ -3456,7 +3478,7 @@ function startServer() {
                     room.sendTo(socket.id, 'roomPassword', roomData);
                     break;
                 case 'unlock':
-                    if (!isPresenter) return;
+                    if (!isPresenter && !isCoHost) return;
                     room.setLocked(false);
                     room.broadCast(socket.id, 'roomAction', data.action);
                     break;
@@ -3465,27 +3487,27 @@ function startServer() {
                     room.setLobbyEnabled(true);
                     break;
                 case 'lobbyOn':
-                    if (!isPresenter) return;
+                    if (!isPresenter && !isCoHost) return;
                     room.setLobbyEnabled(true);
                     room.broadCast(socket.id, 'roomAction', data.action);
                     break;
                 case 'lobbyOff':
-                    if (!isPresenter) return;
+                    if (!isPresenter && !isCoHost) return;
                     room.setLobbyEnabled(false);
                     room.broadCast(socket.id, 'roomAction', data.action);
                     break;
                 case 'hostOnlyRecordingOn':
-                    if (!isPresenter) return;
+                    if (!isPresenter && !isCoHost) return;
                     room.setHostOnlyRecording(true);
                     room.broadCast(socket.id, 'roomAction', data.action);
                     break;
                 case 'hostOnlyRecordingOff':
-                    if (!isPresenter) return;
+                    if (!isPresenter && !isCoHost) return;
                     room.setHostOnlyRecording(false);
                     room.broadCast(socket.id, 'roomAction', data.action);
                     break;
                 case 'isBanned':
-                    if (!isPresenter) return;
+                    if (!isPresenter && !isCoHost) return;
                     log.debug('The user has been banned from the room due to spamming messages', data);
                     room.addBannedPeer(data.peer_uuid);
                     break;

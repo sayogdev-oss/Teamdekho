@@ -4,9 +4,36 @@
 // RESPONSIVE PARTICIPANTS VIEW
 // ####################################################
 
-function renderGridForPage(visiblePeerIds) {
-    // Do nothing - let MiroTalk handle its own grid rendering
-    // Pagination pause/resume handles bandwidth, not DOM visibility
+let currentPage = 1;
+const PARTICIPANTS_PER_PAGE = 6;
+
+// ####################################################
+// RESPONSIVE PARTICIPANTS VIEW
+// ####################################################
+
+function renderGridForPage(allPeerIds) {
+    const totalPages = Math.ceil(allPeerIds.length / PARTICIPANTS_PER_PAGE);
+    if (currentPage > totalPages) currentPage = totalPages;
+    if (currentPage < 1) currentPage = 1;
+
+    const startIdx = (currentPage - 1) * PARTICIPANTS_PER_PAGE;
+    const endIdx = startIdx + PARTICIPANTS_PER_PAGE;
+    const visiblePeerIds = allPeerIds.slice(startIdx, endIdx);
+
+    // Show/Hide video elements based on visibility
+    const cameras = document.getElementsByClassName('Camera');
+    for (let camera of cameras) {
+        const peerId = camera.id.replace('video-', '');
+        camera.style.display = visiblePeerIds.includes(peerId) ? 'block' : 'none';
+    }
+
+    // Call RoomClient to pause/resume bandwidth-intensive consumers
+    if (typeof rc !== 'undefined') {
+        rc.pauseConsumersForHiddenPeers(visiblePeerIds);
+        rc.resumeConsumersForVisiblePeers(visiblePeerIds);
+    }
+
+    resizeVideoMedia();
 }
 
 // ####################################################
@@ -105,6 +132,8 @@ function resizeVideoMedia() {
     }
 }
 
+window.resizeVideoMedia = resizeVideoMedia;
+
 function resetZoom() {
     const videoElements = document.querySelectorAll('video');
     videoElements.forEach((video) => {
@@ -191,3 +220,4 @@ window.addEventListener(
     },
     false
 );
+
