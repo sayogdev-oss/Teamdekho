@@ -1,8 +1,8 @@
 swagger: '2.0'
 
 info:
-    title: MiroTalk SFU API
-    description: API description for external applications that integrate with MiroTalk SFU.
+    title: TeamDekho API
+    description: API description for external applications that integrate with TeamDekho.
     version: 1.0.1
 
 basePath: /api/v1
@@ -194,7 +194,7 @@ definitions:
                 default: false
             name:
                 type: string
-                default: 'mirotalksfu'
+                default: 'TeamDekhosfu'
             avatar:
                 type: ['boolean', 'string'] # Allow boolean or string type
                 default: false

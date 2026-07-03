@@ -4,120 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>TeamDekho - Host Login</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: 'Segoe UI', sans-serif;
-      background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .card {
-      background: white;
-      border-radius: 16px;
-      padding: 48px 40px;
-      width: 100%;
-      max-width: 420px;
-      text-align: center;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-    }
-    .logo h1 {
-      font-size: 2rem;
-      font-weight: 800;
-      margin-bottom: 8px;
-    }
-    .logo h1 span.team { color: #1a2d4e; }
-    .logo h1 span.dekho { color: #00b4a6; }
-    .logo p {
-      color: #6b7280;
-      font-size: 0.95rem;
-      margin-bottom: 32px;
-    }
-    .divider {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin: 24px 0;
-      color: #9ca3af;
-      font-size: 0.85rem;
-    }
-    .divider::before, .divider::after {
-      content: '';
-      flex: 1;
-      height: 1px;
-      background: #e5e7eb;
-    }
-    .google-btn {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 12px;
-      width: 100%;
-      padding: 14px 20px;
-      border: 2px solid #e5e7eb;
-      border-radius: 10px;
-      background: white;
-      font-size: 1rem;
-      font-weight: 600;
-      color: #374151;
-      cursor: pointer;
-      text-decoration: none;
-      transition: all 0.2s;
-    }
-    .google-btn:hover {
-      border-color: #00b4a6;
-      background: #f0fffe;
-      transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(0,180,166,0.2);
-    }
-    .google-icon {
-      width: 22px;
-      height: 22px;
-    }
-    .guest-section {
-      margin-top: 24px;
-      padding-top: 24px;
-      border-top: 1px solid #e5e7eb;
-    }
-    .guest-section p {
-      color: #6b7280;
-      font-size: 0.9rem;
-      margin-bottom: 12px;
-    }
-    .guest-section a {
-      color: #00b4a6;
-      font-weight: 600;
-      text-decoration: none;
-    }
-    .error-msg {
-      background: #fef2f2;
-      color: #dc2626;
-      padding: 10px 16px;
-      border-radius: 8px;
-      font-size: 0.9rem;
-      margin-bottom: 20px;
-      display: none;
-    }
-    .features {
-      margin-top: 28px;
-      text-align: left;
-    }
-    .features p {
-      font-size: 0.82rem;
-      color: #9ca3af;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 6px;
-    }
-    .features p::before {
-      content: '✓';
-      color: #00b4a6;
-      font-weight: bold;
-    }
-  </style>
+  <link rel="stylesheet" type="text/css" href="../css/hostLogin.css" />
 </head>
 <body>
   <script>
@@ -141,7 +28,7 @@
       Authentication failed. Please try again.
     </div>
 
-    <a href="/auth/google" class="google-btn">
+    <a href="#" id="googleLoginBtn" class="google-btn">
       <svg class="google-icon" viewBox="0 0 24 24">
         <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
         <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
@@ -153,7 +40,7 @@
 
     <div class="features">
       <p>Free HD video meetings</p>
-      <p>Up to 50 participants — Free forever</p>
+      <p>Up to 20 participants — Free forever</p>
       <p>Permanent room URL</p>
       <p>No credit card required</p>
     </div>
@@ -170,5 +57,18 @@
       document.getElementById('errorMsg').style.display = 'block';
     }
   </script>
+<script>
+  (function() {
+    const params = new URLSearchParams(window.location.search);
+    const returnTo = params.get("returnTo") || "";
+    const topic = params.get("topic") || "";
+    const redirect = params.get("redirect") || "";
+    const state = encodeURIComponent(JSON.stringify({ returnTo, topic, redirect }));
+    const btn = document.getElementById("googleLoginBtn");
+    if (btn) {
+      btn.href = "/auth/google?state=" + state;
+    }
+  })();
+</script>
 </body>
 </html>

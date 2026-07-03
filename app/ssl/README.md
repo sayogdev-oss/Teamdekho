@@ -2,7 +2,7 @@
 
 [What is self-signed-certificate](https://en.wikipedia.org/wiki/Self-signed_certificate)
 
-![mirotalksfu-https](https.png)
+![teamdekhosfu-https](https.png)
 
 ```bash
 # install openssl 4 ubuntu

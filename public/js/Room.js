@@ -3,14 +3,14 @@
 if (location.href.substr(0, 5) !== 'https') location.href = 'https' + location.href.substr(4, location.href.length - 4);
 
 /**
- * MiroTalk SFU - Room component
+ * TeamDekho - Room component
  *
- * @link    GitHub: https://github.com/miroslavpejic85/mirotalksfu
- * @link    Official Live demo: https://sfu.mirotalk.com
+ * @link    GitHub: https://github.com/teamdekho/teamdekhosfu
+ * @link    Official Live demo: https://sfu.teamdekho.com
  * @license For open source use: AGPLv3
- * @license For commercial or closed source, contact us at license.mirotalk@gmail.com or purchase directly via CodeCanyon
- * @license CodeCanyon: https://codecanyon.net/item/mirotalk-sfu-webrtc-realtime-video-conferences/40769970
- * @author  Miroslav Pejic - miroslav.pejic.85@gmail.com
+ * @license For commercial or closed source, contact us at license.teamdekho@gmail.com or purchase directly via CodeCanyon
+ * @license CodeCanyon: https://codecanyon.net/item/teamdekho-sfu-webrtc-realtime-video-conferences/40769970
+ * @author  TeamDekho Team - support@teamdekho.in
  * @version 2.2.88
  */
 
@@ -4399,7 +4399,7 @@ function leaveFeedback(allowCancel, disconnectAll = false) {
         imageUrl: image.feedback,
         position: 'top',
         title: 'Leave a feedback',
-        text: 'Do you want to rate your MiroTalk experience?',
+        text: 'Do you want to rate your TeamDekho experience?',
         confirmButtonText: `Yes`,
         denyButtonText: `No`,
         cancelButtonText: `Cancel`,

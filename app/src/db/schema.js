@@ -1,5 +1,17 @@
 const pool = require('./connection');
 
+async function addColumnIfNotExists(conn, table, column, definition) {
+  const [rows] = await conn.query(
+    `SELECT COUNT(*) as cnt FROM information_schema.COLUMNS 
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?`,
+    [table, column]
+  );
+  if (rows[0].cnt === 0) {
+    await conn.query(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+    console.log(`[TeamDekho DB] Migrated: added ${column} to ${table}`);
+  }
+}
+
 async function initializeDatabase() {
   const conn = await pool.getConnection();
   try {
@@ -8,6 +20,7 @@ async function initializeDatabase() {
     await conn.query(`
       CREATE TABLE IF NOT EXISTS td_plans (
         id INT PRIMARY KEY,
+        razorpay_plan_id VARCHAR(50) DEFAULT NULL,
         name VARCHAR(100) NOT NULL,
         price_monthly INT NOT NULL DEFAULT 0,
         price_yearly INT NOT NULL DEFAULT 0,
@@ -33,15 +46,24 @@ async function initializeDatabase() {
     `);
 
     await conn.query(`
-      INSERT IGNORE INTO td_plans 
-      (id,name,price_monthly,price_yearly,max_participants,max_duration_minutes,max_recordings,recording_storage_gb,can_record,can_schedule,can_passcode,can_waiting_room,can_breakout_rooms,can_rtmp_stream,can_whiteboard,can_file_share,can_transcription,can_ai_features,can_custom_branding,features,is_active,created_at)
-      VALUES
-      (1,'free',0,0,50,60,0,0,false,false,false,true,false,false,true,true,false,false,false,NULL,true,NOW()),
-      (2,'starter',99,990,100,90,5,1,true,true,true,true,false,false,true,true,false,false,false,NULL,true,NOW()),
-      (3,'basic',199,1990,250,180,20,5,true,true,true,true,true,false,true,true,true,false,false,NULL,true,NOW()),
-      (4,'pro',299,2990,500,NULL,100,20,true,true,true,true,true,true,true,true,true,true,false,NULL,true,NOW()),
-      (5,'business',699,6990,1000,NULL,-1,-1,true,true,true,true,true,true,true,true,true,true,true,NULL,true,NOW())
-    `);
+        INSERT INTO td_plans 
+        (id,name,price_monthly,price_yearly,max_participants,max_duration_minutes,max_recordings,recording_storage_gb,can_record,can_schedule,can_passcode,can_waiting_room,can_breakout_rooms,can_rtmp_stream,can_whiteboard,can_file_share,can_transcription,can_ai_features,can_custom_branding,features,is_active,created_at)
+        VALUES
+        (1,'Free',0,0,20,60,0,0,false,false,false,true,false,false,true,true,false,false,false,'["20 participants","60 min per meeting","HD video & audio","Whiteboard & file sharing","Waiting room"]',true,NOW()),
+        (2,'Basic',150,0,100,90,10,5,true,true,true,true,true,false,true,true,true,false,false,'["100 participants","90 min per meeting","Cloud recording","Scheduling & passcode","Breakout rooms","Whiteboard & file sharing"]',true,NOW()),
+        (3,'Growth',250,0,150,120,20,10,true,true,true,true,true,true,true,true,true,true,false,'["150 participants","2 hours per meeting","Cloud recording","RTMP streaming","Breakout rooms","AI transcription","All Pro features included"]',true,NOW())
+        ON DUPLICATE KEY UPDATE
+          name=VALUES(name), price_monthly=VALUES(price_monthly), price_yearly=VALUES(price_yearly),
+          max_participants=VALUES(max_participants), max_duration_minutes=VALUES(max_duration_minutes),
+          max_recordings=VALUES(max_recordings), recording_storage_gb=VALUES(recording_storage_gb),
+          can_record=VALUES(can_record), can_schedule=VALUES(can_schedule), can_passcode=VALUES(can_passcode),
+          can_waiting_room=VALUES(can_waiting_room), can_breakout_rooms=VALUES(can_breakout_rooms),
+          can_rtmp_stream=VALUES(can_rtmp_stream), can_whiteboard=VALUES(can_whiteboard),
+          can_file_share=VALUES(can_file_share), can_transcription=VALUES(can_transcription),
+          can_ai_features=VALUES(can_ai_features), can_custom_branding=VALUES(can_custom_branding),
+          features=VALUES(features), is_active=VALUES(is_active)
+      `);
+      await conn.query(`UPDATE td_plans SET is_active = false WHERE id IN (4,5)`);
 
     await conn.query(`
       CREATE TABLE IF NOT EXISTS td_hosts (
@@ -51,6 +73,9 @@ async function initializeDatabase() {
         name VARCHAR(255) NOT NULL,
         avatar VARCHAR(500),
         plan_id INT DEFAULT 1,
+        razorpay_customer_id VARCHAR(50) DEFAULT NULL,
+        razorpay_subscription_id VARCHAR(50) DEFAULT NULL,
+        subscription_status VARCHAR(20) DEFAULT 'inactive',
         personal_meeting_id VARCHAR(11) UNIQUE,
         personal_room_slug VARCHAR(255) UNIQUE,
         passcode VARCHAR(50) DEFAULT NULL,
@@ -395,6 +420,12 @@ async function initializeDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
+
+    await addColumnIfNotExists(conn, 'td_plans', 'razorpay_plan_id', 'VARCHAR(50) DEFAULT NULL');
+    await addColumnIfNotExists(conn, 'td_hosts', 'razorpay_customer_id', 'VARCHAR(50) DEFAULT NULL');
+    await addColumnIfNotExists(conn, 'td_hosts', 'razorpay_subscription_id', 'VARCHAR(50) DEFAULT NULL');
+    await addColumnIfNotExists(conn, 'td_hosts', 'subscription_status', "VARCHAR(20) DEFAULT 'inactive'");
+    await addColumnIfNotExists(conn, 'td_payments', 'gateway_subscription_id', 'VARCHAR(255) DEFAULT NULL');
 
     console.log('[TeamDekho DB] All 19 tables ready!');
   } catch (err) {

@@ -2,7 +2,7 @@
 
 ![webhook](./webhooks.png)
 
-This example shows how to set up a server to listen for MiroTalk SFU webhook events (join, exitRoom, disconnect).
+This example shows how to set up a server to listen for TeamDekho webhook events (join, exitRoom, disconnect).
 
 ### Step 1: Enable Webhooks
 
@@ -33,7 +33,7 @@ WEBHOOK_URL=https://YOUR-DOMAIN-NAME/webhook-endpoint
 
 ### Step 3: Webhook Events
 
-MiroTalk SFU sends HTTP `POST` requests to the specified URL with event data:
+TeamDekho sends HTTP `POST` requests to the specified URL with event data:
 
 **Example Payload**:
 

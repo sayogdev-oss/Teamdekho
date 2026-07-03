@@ -4,7 +4,7 @@ const config = require('../config');
 
 /**
  * Embed (iframe) restrictions.
- * Controls which origins may embed MiroTalk SFU in an <iframe> via CSP
+ * Controls which origins may embed TeamDekho in an <iframe> via CSP
  * `frame-ancestors` (and `X-Frame-Options` for legacy browsers).
  * Configured via ALLOWED_EMBED_ORIGINS env var. See config.server.embed.
  */

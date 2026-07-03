@@ -1,18 +1,18 @@
 <!doctype html>
 <html>
     <head>
-        <script src="https://sfu.mirotalk.com/js/Widget.js"></script>
+        <script src="https://sfu.teamdekho.com/js/Widget.js"></script>
     </head>
     <body>
         <script>
             // Advanced configuration
             window.addEventListener('DOMContentLoaded', function () {
-                if (typeof MiroTalkWidget !== 'undefined') {
-                    const domain = 'sfu.mirotalk.com';
+                if (typeof TeamDekhoWidget !== 'undefined') {
+                    const domain = 'sfu.teamdekho.com';
                     const roomId = 'support-room';
                     const userName = 'guest-' + Math.floor(Math.random() * 10000);
 
-                    new MiroTalkWidget(domain, roomId, userName, {
+                    new TeamDekhoWidget(domain, roomId, userName, {
                         theme: 'dark', // or 'light'
                         widgetState: 'normal', // 'normal', 'minimized', 'closed'
                         widgetType: 'support',
@@ -32,12 +32,12 @@
                                 connectText: 'connect in < 5 seconds',
                                 onlineText: 'We are online',
                                 offlineText: 'We are offline',
-                                poweredBy: 'Powered by MiroTalk SFU',
+                                poweredBy: 'Powered by TeamDekho',
                             },
                         },
                     });
                 } else {
-                    console.error('MiroTalkWidget is not defined. Please check Widget.js loading.');
+                    console.error('TeamDekhoWidget is not defined. Please check Widget.js loading.');
                 }
             });
         </script>

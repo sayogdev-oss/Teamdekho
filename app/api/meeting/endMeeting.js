@@ -5,13 +5,13 @@ async function endMeeting() {
         // Use dynamic import with await
         const { default: fetch } = await import('node-fetch');
 
-        const API_KEY_SECRET = 'mirotalksfu_default_secret';
-        const MIROTALK_URL = 'https://sfu.mirotalk.com/api/v1/meeting';
-        // const MIROTALK_URL = 'http://localhost:3010/api/v1/meeting';
+        const API_KEY_SECRET = 'teamdekhosfu_default_secret';
+        const TeamDekho_URL = 'https://sfu.teamdekho.com/api/v1/meeting';
+        // const TeamDekho_URL = 'http://localhost:3010/api/v1/meeting';
 
         const ROOM = 'test'; // Room name to end
 
-        const response = await fetch(`${MIROTALK_URL}/${ROOM}`, {
+        const response = await fetch(`${TeamDekho_URL}/${ROOM}`, {
             method: 'DELETE',
             headers: {
                 authorization: API_KEY_SECRET,

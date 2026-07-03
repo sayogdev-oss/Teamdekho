@@ -2,10 +2,10 @@
 
 /**
  * ==============================================
- * MiroTalk SFU v2.2.88 - Configuration File
+ * TeamDekho v2.2.88 - Configuration File
  * ==============================================
  *
- * This file contains all configurable settings for the MiroTalk SFU application.
+ * This file contains all configurable settings for the TeamDekho application.
  * Environment variables can override most settings (see each section for details).
  *
  * Structure:
@@ -149,7 +149,7 @@ module.exports = {
         /**
          * Embed (iframe) Restrictions
          * ---------------------------
-         * Controls which origins are allowed to embed MiroTalk SFU in an <iframe>
+         * Controls which origins are allowed to embed TeamDekho in an <iframe>
          * via the HTTP `Content-Security-Policy: frame-ancestors` header
          * (also mirrored to `X-Frame-Options` when possible for legacy browsers).
          *
@@ -160,7 +160,7 @@ module.exports = {
          * - list           → comma-separated origins, 'self' is always implicitly included.
          *                    Wildcards like https://*.example.com are valid in CSP.
          *
-         * IMPORTANT: This affects the widget too — the MiroTalk widget embeds
+         * IMPORTANT: This affects the widget too — the TeamDekho widget embeds
          * the room in an iframe on the host site, so every site that should
          * load the widget must be listed here.
          */
@@ -228,8 +228,8 @@ module.exports = {
          * - server             : RTMP server URL (default: 'rtmp://localhost:1935')
          * - appName            : Application name (default: 'live')
          * - streamKey          : Optional authentication key (auto-generated UUID if empty)
-         * - secret             : Must match NodeMediaServer's config.js (default: 'mirotalkRtmpSecret')
-         * - apiSecret          : WebRTC→RTMP API secret (default: 'mirotalkRtmpApiSecret')
+         * - secret             : Must match NodeMediaServer's config.js (default: 'teamdekhoRtmpSecret')
+         * - apiSecret          : WebRTC→RTMP API secret (default: 'teamdekhoRtmpApiSecret')
          * - expirationHours    : Stream URL expiry in hours (default: 4)
          * - dir                : Video storage directory (Relative to app/src/ default: app/rtmp)
          * - ffmpegPath         : FFmpeg binary path (auto-detected)
@@ -237,12 +237,12 @@ module.exports = {
          *
          * Server Management
          * ----------------
-         * NodeMediaServer (mirotalk/nms:latest):
+         * NodeMediaServer (teamdekho/nms:latest):
          *   - Start: npm run nms-start
          *   - Stop:  npm run nms-stop
          *   - Logs:  npm run nms-logs
          *
-         * NGINX-RTMP (mirotalk/rtmp:latest):
+         * NGINX-RTMP (teamdekho/rtmp:latest):
          *   - Start: npm run rtmp-start
          *   - Stop:  npm run rtmp-stop
          *   - Logs:  npm run rtmp-logs
@@ -323,7 +323,7 @@ module.exports = {
          *
          * Documentation:
          * --------------
-         * - https://docs.mirotalk.com/mirotalk-sfu/rtmp/
+         * - https://docs.teamdekho.com/teamdekho-sfu/rtmp/
          */
         rtmp: {
             enabled: process.env.RTMP_ENABLED === 'true',
@@ -336,8 +336,8 @@ module.exports = {
             server: process.env.RTMP_SERVER || 'rtmp://localhost:1935',
             appName: process.env.RTMP_APP_NAME || 'live',
             streamKey: process.env.RTMP_STREAM_KEY || '',
-            secret: process.env.RTMP_SECRET || 'mirotalkRtmpSecret',
-            apiSecret: process.env.RTMP_API_SECRET || 'mirotalkRtmpApiSecret',
+            secret: process.env.RTMP_SECRET || 'teamdekhoRtmpSecret',
+            apiSecret: process.env.RTMP_API_SECRET || 'teamdekhoRtmpApiSecret',
             expirationHours: parseInt(process.env.RTMP_EXPIRATION_HOURS) || 4,
             dir: process.env.RTMP_DIR || '../rtmp',
             ffmpegPath: RTMP_FFMPEG_PATH,
@@ -374,7 +374,7 @@ module.exports = {
          * - exp: Token expiration time
          */
         jwt: {
-            key: process.env.JWT_SECRET || 'mirotalksfu_jwt_secret',
+            key: process.env.JWT_SECRET || 'teamdekhosfu_jwt_secret',
             exp: process.env.JWT_EXPIRATION || '1h',
         },
 
@@ -446,7 +446,7 @@ module.exports = {
                 clientSecret: process.env.OIDC_CLIENT_SECRET || 'clientSecret',
 
                 // Session configuration
-                secret: process.env.OIDC_SECRET || 'mirotalksfu-oidc-secret',
+                secret: process.env.OIDC_SECRET || 'teamdekhosfu-oidc-secret',
                 authRequired: process.env.OIDC_AUTH_REQUIRED === 'true', // Whether all routes require authentication
                 auth0Logout: process.env.OIDC_AUTH_LOGOUT !== 'false', // Use provider's logout endpoint
 
@@ -511,7 +511,7 @@ module.exports = {
          *
          * Documentation:
          * -------------
-         * https://docs.mirotalk.com/mirotalk-sfu/host-protection/
+         * https://docs.teamdekho.com/teamdekho-sfu/host-protection/
          */
         host: {
             protected: process.env.HOST_PROTECTED === 'true',
@@ -521,13 +521,13 @@ module.exports = {
             minBlockTime: process.env.HOST_MIN_LOGIN_BLOCK_TIME || 15, // in minutes
 
             users_from_db: process.env.HOST_USERS_FROM_DB === 'true',
-            users_api_secret_key: process.env.USERS_API_SECRET || 'mirotalkweb_default_secret',
-            users_api_endpoint: process.env.USERS_API_ENDPOINT || 'http://localhost:9000/api/v1/user/isAuth', // 'https://webrtc.mirotalk.com/api/v1/user/isAuth'
+            users_api_secret_key: process.env.USERS_API_SECRET || 'teamdekhoweb_default_secret',
+            users_api_endpoint: process.env.USERS_API_ENDPOINT || 'http://localhost:9000/api/v1/user/isAuth', // 'https://webrtc.teamdekho.com/api/v1/user/isAuth'
             users_api_room_allowed:
-                process.env.USERS_ROOM_ALLOWED_ENDPOINT || 'http://localhost:9000/api/v1/user/isRoomAllowed', // 'https://webrtc.mirotalk.com/api/v1/user/isRoomAllowed'
+                process.env.USERS_ROOM_ALLOWED_ENDPOINT || 'http://localhost:9000/api/v1/user/isRoomAllowed', // 'https://webrtc.teamdekho.com/api/v1/user/isRoomAllowed'
             users_api_rooms_allowed:
-                process.env.USERS_ROOMS_ALLOWED_ENDPOINT || 'http://localhost:9000/api/v1/user/roomsAllowed', // 'https://webrtc.mirotalk.com/api/v1/user/roomsAllowed'
-            api_room_exists: process.env.ROOM_EXISTS_ENDPOINT || 'http://localhost:9000/api/v1/room/exists', // 'https://webrtc.mirotalk.com//api/v1/room/exists'
+                process.env.USERS_ROOMS_ALLOWED_ENDPOINT || 'http://localhost:9000/api/v1/user/roomsAllowed', // 'https://webrtc.teamdekho.com/api/v1/user/roomsAllowed'
+            api_room_exists: process.env.ROOM_EXISTS_ENDPOINT || 'http://localhost:9000/api/v1/room/exists', // 'https://webrtc.teamdekho.com//api/v1/room/exists'
 
             users: process.env.HOST_USERS
                 ? process.env.HOST_USERS.split('|').map((userStr) => {
@@ -570,7 +570,7 @@ module.exports = {
                     ? process.env.PRESENTERS.split(splitChar)
                           .map((presenter) => presenter.trim())
                           .filter((presenter) => presenter !== '')
-                    : ['Miroslav Pejic', 'miroslav.pejic.85@gmail.com'],
+                    : ['TeamDekho Team', 'support@teamdekho.in'],
                 join_first: process.env.PRESENTER_JOIN_FIRST !== 'false',
             },
         },
@@ -602,7 +602,7 @@ module.exports = {
      *
      * API Documentation:
      * ------------------
-     * - Complete API reference: https://docs.mirotalk.com/mirotalk-sfu/api/
+     * - Complete API reference: https://docs.teamdekho.com/teamdekho-sfu/api/
      * - Webhook setup: See integration guides for Slack/Mattermost
      */
     api: {
@@ -738,7 +738,7 @@ module.exports = {
          * AI Behavior:
          * -----------
          * - systemLimit: Personality/behavior instructions for the AI avatar
-         *                (default: Streaming avatar instructions for MiroTalk SFU)
+         *                (default: Streaming avatar instructions for TeamDekho)
          */
         videoAI: {
             enabled: process.env.VIDEOAI_ENABLED === 'true',
@@ -746,7 +746,7 @@ module.exports = {
             apiKey: process.env.VIDEOAI_API_KEY || '',
             mode: process.env.VIDEOAI_MODE || 'FULL',
             contextId: process.env.VIDEOAI_CONTEXT_ID || '',
-            systemLimit: process.env.VIDEOAI_SYSTEM_LIMIT || 'You are a streaming avatar from MiroTalk SFU...',
+            systemLimit: process.env.VIDEOAI_SYSTEM_LIMIT || 'You are a streaming avatar from TeamDekho...',
             sessionTimeLimit: process.env.VIDEOAI_SESSION_TIME_LIMIT
                 ? parseInt(process.env.VIDEOAI_SESSION_TIME_LIMIT, 10)
                 : 0, // Session time limit in seconds (0 = unlimited)
@@ -795,7 +795,7 @@ module.exports = {
             username: process.env.EMAIL_USERNAME || 'test',
             password: process.env.EMAIL_PASSWORD || 'test',
             from: process.env.EMAIL_FROM || process.env.EMAIL_USERNAME,
-            sendTo: process.env.EMAIL_SEND_TO || 'test@mirotalk.com',
+            sendTo: process.env.EMAIL_SEND_TO || 'test@teamdekho.com',
         },
 
         /**
@@ -910,7 +910,7 @@ module.exports = {
                 {
                     name: process.env.DISCORD_COMMAND_NAME || '/sfu',
                     message: process.env.DISCORD_DEFAULT_MESSAGE || 'Here is your SFU meeting room:',
-                    baseUrl: process.env.DISCORD_BASE_URL || 'https://sfu.mirotalk.com/join/',
+                    baseUrl: process.env.DISCORD_BASE_URL || 'https://sfu.teamdekho.com/join/',
                 },
             ],
         },
@@ -987,7 +987,7 @@ module.exports = {
          * Implementation Guide:
          * --------------------
          * - For complete implementation examples, refer to:
-         *      - Project demo: /mirotalksfu/webhook/ folder
+         *      - Project demo: /teamdekhosfu/webhook/ folder
          */
         webhook: {
             enabled: process.env.WEBHOOK_ENABLED === 'true',
@@ -1043,7 +1043,7 @@ module.exports = {
          *    - Sign in to AWS Management Console
          *    - Navigate to S3 service
          *    - Click "Create bucket"
-         *    - Choose unique name (e.g., 'mirotalk')
+         *    - Choose unique name (e.g., 'teamdekho')
          *    - Select region (must match AWS_REGION in config)
          *    - Enable desired settings (versioning, logging, etc.)
          *
@@ -1075,7 +1075,7 @@ module.exports = {
             enabled: process.env.S3_ENABLED === 'true',
             accessKeyId: process.env.S3_ACCESS_KEY_ID || 'your-access-key-id',
             secretAccessKey: process.env.S3_SECRET_ACCESS_KEY || 'your-secret-access-key',
-            bucket: process.env.S3_BUCKET || 'mirotalk',
+            bucket: process.env.S3_BUCKET || 'teamdekho',
             region: process.env.S3_REGION || 'us-east-2',
             endpoint: process.env.S3_ENDPOINT || '',
             forcePathStyle: process.env.S3_FORCE_PATH_STYLE === 'true',
@@ -1096,14 +1096,14 @@ module.exports = {
          * ==============================================
          * LICENSE REQUIRED:
          * ==============================================
-         * - https://codecanyon.net/item/mirotalk-sfu-webrtc-realtime-video-conferences/40769970
+         * - https://codecanyon.net/item/teamdekho-sfu-webrtc-realtime-video-conferences/40769970
          */
         rooms: {
             /**
              * Room Display Settings
              * ---------------------
              * - showActive: Show active rooms in the UI (default: false)
-             *   https://sfu.mirotalk.com/activeRooms
+             *   https://sfu.teamdekho.com/activeRooms
              * - activeRoomsRateLimit: Throttle the public /api/v1/activeRooms
              *   endpoint per IP to prevent enumeration/scraping abuse without
              *   breaking the public "event zone" UX.
@@ -1129,10 +1129,10 @@ module.exports = {
 
             app: {
                 language: process.env.UI_LANGUAGE || 'en',
-                name: process.env.APP_NAME || 'MiroTalk SFU',
+                name: process.env.APP_NAME || 'TeamDekho',
                 title:
                     process.env.APP_TITLE ||
-                    '<h1>MiroTalk SFU</h1> Free browser based Real-time video calls.<br />Simple, Secure, Fast.',
+                    '<h1>TeamDekho</h1> Free browser based Real-time video calls.<br />Simple, Secure, Fast.',
                 description:
                     process.env.APP_DESCRIPTION ||
                     'Start your next video call with a single click. No download, plug-in, or login is required.',
@@ -1148,7 +1148,7 @@ module.exports = {
              * Site-wide settings including icons and page-specific content.
              */
             site: {
-                title: process.env.SITE_TITLE || 'MiroTalk SFU, Free Video Calls, Messaging and Screen Sharing',
+                title: process.env.SITE_TITLE || 'TeamDekho, Free Video Calls, Messaging and Screen Sharing',
                 icon: process.env.SITE_ICON_PATH || '../images/logo.svg',
                 appleTouchIcon: process.env.APPLE_TOUCH_ICON_PATH || '../images/logo.svg',
                 newRoomTitle: process.env.NEW_ROOM_TITLE || 'Pick name. <br />Share URL. <br />Start conference.',
@@ -1164,8 +1164,8 @@ module.exports = {
             meta: {
                 description:
                     process.env.META_DESCRIPTION ||
-                    'MiroTalk SFU powered by WebRTC and mediasoup for real-time video communications.',
-                keywords: process.env.META_KEYWORDS || 'webrtc, video calls, conference, screen sharing, mirotalk, sfu',
+                    'TeamDekho powered by WebRTC and mediasoup for real-time video communications.',
+                keywords: process.env.META_KEYWORDS || 'webrtc, video calls, conference, screen sharing, teamdekho, sfu',
             },
 
             /**
@@ -1175,12 +1175,12 @@ module.exports = {
              */
             og: {
                 type: process.env.OG_TYPE || 'app-webrtc',
-                siteName: process.env.OG_SITE_NAME || 'MiroTalk SFU',
+                siteName: process.env.OG_SITE_NAME || 'TeamDekho',
                 title: process.env.OG_TITLE || 'Click the link to make a call.',
                 description:
-                    process.env.OG_DESCRIPTION || 'MiroTalk SFU provides real-time video calls and screen sharing.',
-                image: process.env.OG_IMAGE_URL || 'https://sfu.mirotalk.com/images/mirotalksfu.png',
-                url: process.env.OG_URL || 'https://sfu.mirotalk.com',
+                    process.env.OG_DESCRIPTION || 'TeamDekho provides real-time video calls and screen sharing.',
+                image: process.env.OG_IMAGE_URL || 'https://sfu.teamdekho.com/images/teamdekhosfu.png',
+                url: process.env.OG_URL || 'https://sfu.teamdekho.com',
             },
 
             /**
@@ -1209,7 +1209,7 @@ module.exports = {
              * Customizable text and button labels.
              */
             whoAreYou: {
-                title: process.env.WHO_ARE_YOU_TITLE || 'MiroTalk SFU - Waiting for host to start the meeting',
+                title: process.env.WHO_ARE_YOU_TITLE || 'TeamDekho - Waiting for host to start the meeting',
                 waitingRoomHeading: process.env.WHO_ARE_YOU_WAITING_ROOM_HEADING || 'Waiting for host...',
                 waitingRoomDescription:
                     process.env.WHO_ARE_YOU_WAITING_ROOM_DESCRIPTION ||
@@ -1244,30 +1244,25 @@ module.exports = {
              * Supports HTML content for flexible formatting.
              */
             about: {
-                imageUrl: process.env.ABOUT_IMAGE_URL || '../images/mirotalk-logo.gif',
+                imageUrl: process.env.ABOUT_IMAGE_URL || '../images/teamdekho-logo.gif',
                 title: `WebRTC SFU v${packageJson.version}`,
                 html: `
                     <button id="support-button" data-umami-event="Support button"
-                        onclick="window.open('${process.env.SUPPORT_URL || 'https://codecanyon.net/user/miroslavpejic85'}', '_blank')">
+                        onclick="window.open('${process.env.SUPPORT_URL || 'https://teamdekho.in'}', '_blank')">
                         <i class="fas fa-heart"></i> ${process.env.SUPPORT_TEXT || 'Support'}
                     </button>
                     <br />
                     <br />
-                    ${process.env.AUTHOR_LABEL || 'Author'}: 
-                    <a id="linkedin-button" data-umami-event="Linkedin button"
-                        href="${process.env.LINKEDIN_URL || 'https://www.linkedin.com/in/miroslav-pejic-976a07101/'}" 
-                        target="_blank">
-                        ${process.env.AUTHOR_NAME || 'Miroslav Pejic'}
-                    </a>
+                    Built with ❤️ by TeamDekho Team.
                     <br />
-                    ${process.env.EMAIL_LABEL || 'Email'}: 
+                    Contact:
                     <a id="email-button" data-umami-event="Email button"
-                        href="mailto:${process.env.CONTACT_EMAIL || 'miroslav.pejic.85@gmail.com'}?subject=${process.env.EMAIL_SUBJECT || 'MiroTalk SFU info'}">
-                        ${process.env.CONTACT_EMAIL || 'miroslav.pejic.85@gmail.com'}
+                        href="mailto:${process.env.CONTACT_EMAIL || 'support@teamdekho.in'}?subject=${process.env.EMAIL_SUBJECT || 'TeamDekho info'}">
+                        ${process.env.CONTACT_EMAIL || 'support@teamdekho.in'}
                     </a>
                     <hr />
                     <span>
-                        &copy; ${new Date().getFullYear()} ${process.env.COPYRIGHT_TEXT || 'MiroTalk SFU, all rights reserved'}
+                        &copy; ${new Date().getFullYear()} ${process.env.COPYRIGHT_TEXT || 'TeamDekho, all rights reserved'}
                     </span>
                     <hr />
                     `,
@@ -1310,7 +1305,7 @@ module.exports = {
                         connectText: process.env.WIDGET_SUPPORT_CONNECT_TEXT || 'connect in < 5 seconds',
                         onlineText: process.env.WIDGET_SUPPORT_ONLINE_TEXT || 'We are online',
                         offlineText: process.env.WIDGET_SUPPORT_OFFLINE_TEXT || 'We are offline',
-                        poweredBy: process.env.WIDGET_SUPPORT_POWERED_BY || 'Powered by MiroTalk SFU',
+                        poweredBy: process.env.WIDGET_SUPPORT_POWERED_BY || 'Powered by TeamDekho',
                     },
                 },
                 alert: {
@@ -1593,7 +1588,7 @@ module.exports = {
          */
         stats: {
             enabled: process.env.STATS_ENABLED !== 'false',
-            src: process.env.STATS_SRC || 'https://stats.mirotalk.com/script.js',
+            src: process.env.STATS_SRC || 'https://stats.teamdekho.com/script.js',
             id: process.env.STATS_ID || '41d26670-f275-45bb-af82-3ce91fe57756',
         },
     },
@@ -1623,7 +1618,7 @@ module.exports = {
     /**
      * Mediasoup Integration Resources
      * ==============================
-     * Core WebRTC components powering MiroTalk SFU
+     * Core WebRTC components powering TeamDekho
      *
      * Essential Links:
      * ---------------

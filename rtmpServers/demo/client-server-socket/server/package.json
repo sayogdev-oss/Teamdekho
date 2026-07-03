@@ -1,7 +1,7 @@
 {
-    "name": "mirotalk-rtmp-server-streamer",
+    "name": "teamdekho-rtmp-server-streamer",
     "version": "1.0.3",
-    "description": "MiroTalk RTMP Server Streamer",
+    "description": "TeamDekho RTMP Server Streamer",
     "main": "server.js",
     "scripts": {
         "start": "node server.js",
@@ -9,14 +9,14 @@
         "nms-start": "docker-compose -f ../../../node-media-server/docker-compose.yml up -d",
         "nms-stop": "docker-compose -f ../../../node-media-server/docker-compose.yml down",
         "nms-restart": "docker-compose -f ../../../node-media-server/docker-compose.yml down && docker-compose -f ../../node-media-server/docker-compose.yml up -d",
-        "nms-logs": "docker logs -f mirotalk-nms"
+        "nms-logs": "docker logs -f teamdekho-nms"
     },
     "keywords": [
         "rtmp",
         "server",
         "streaming"
     ],
-    "author": "Miroslav Pejic",
+    "author": "TeamDekho Team",
     "license": "AGPLv3",
     "dependencies": {
         "@ffmpeg-installer/ffmpeg": "^1.1.0",

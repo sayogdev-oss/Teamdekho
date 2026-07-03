@@ -2602,21 +2602,21 @@ body {
     border-radius: 12px !important;
 }
 
-.mirotalk-hidden-file-input {
+.teamdekho-hidden-file-input {
     display: none !important;
 }
 
-.mirotalk-file-picker-html {
+.teamdekho-file-picker-html {
     margin-top: 1rem !important;
 }
 
-.mirotalk-file-picker {
+.teamdekho-file-picker {
     display: flex;
     flex-direction: column;
     gap: 14px;
 }
 
-.mirotalk-file-dropzone {
+.teamdekho-file-dropzone {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -2634,8 +2634,8 @@ body {
         box-shadow 0.18s ease;
 }
 
-.mirotalk-file-dropzone:hover,
-.mirotalk-file-dropzone.is-dragover {
+.teamdekho-file-dropzone:hover,
+.teamdekho-file-dropzone.is-dragover {
     border-color: var(--dd-color, #e8e8ec);
     background:
         radial-gradient(circle at top, rgba(255, 255, 255, 0.08), transparent 52%),
@@ -2645,13 +2645,13 @@ body {
         0 18px 36px rgba(0, 0, 0, 0.2);
 }
 
-.mirotalk-file-dropzone.has-file {
+.teamdekho-file-dropzone.has-file {
     border-style: solid;
     border-color: rgba(102, 190, 255, 0.5);
     background: radial-gradient(circle at top, rgba(102, 190, 255, 0.14), transparent 55%), rgba(255, 255, 255, 0.05);
 }
 
-.mirotalk-file-dropzone-icon {
+.teamdekho-file-dropzone-icon {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -2662,25 +2662,25 @@ body {
     font-size: 1.5rem;
 }
 
-.mirotalk-file-dropzone-title {
+.teamdekho-file-dropzone-title {
     font-size: 1.2rem;
     font-weight: 700;
 }
 
-.mirotalk-file-dropzone-subtitle,
-.mirotalk-file-dropzone-helper {
+.teamdekho-file-dropzone-subtitle,
+.teamdekho-file-dropzone-helper {
     color: rgba(255, 255, 255, 0.72);
 }
 
-.mirotalk-file-dropzone-subtitle {
+.teamdekho-file-dropzone-subtitle {
     font-size: 0.95rem;
 }
 
-.mirotalk-file-dropzone-helper {
+.teamdekho-file-dropzone-helper {
     font-size: 0.82rem;
 }
 
-.mirotalk-file-dropzone-cta {
+.teamdekho-file-dropzone-cta {
     margin-top: 4px;
     padding: 10px 16px;
     border-radius: 999px;
@@ -2690,7 +2690,7 @@ body {
     font-weight: 600;
 }
 
-.mirotalk-file-preview {
+.teamdekho-file-preview {
     display: flex;
     align-items: center;
     gap: 12px;
@@ -2701,7 +2701,7 @@ body {
     text-align: left;
 }
 
-.mirotalk-file-preview-icon {
+.teamdekho-file-preview-icon {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -2713,31 +2713,31 @@ body {
     flex: 0 0 auto;
 }
 
-.mirotalk-file-preview-meta {
+.teamdekho-file-preview-meta {
     flex: 1;
     min-width: 0;
 }
 
-.mirotalk-file-preview-meta strong,
-.mirotalk-file-preview-meta span {
+.teamdekho-file-preview-meta strong,
+.teamdekho-file-preview-meta span {
     display: block;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-.mirotalk-file-preview-meta strong {
+.teamdekho-file-preview-meta strong {
     color: #fff;
     font-size: 0.95rem;
 }
 
-.mirotalk-file-preview-meta span {
+.teamdekho-file-preview-meta span {
     margin-top: 4px;
     color: rgba(255, 255, 255, 0.68);
     font-size: 0.82rem;
 }
 
-.mirotalk-file-preview-remove {
+.teamdekho-file-preview-remove {
     border: none;
     border-radius: 12px;
     padding: 10px 12px;
@@ -2747,7 +2747,7 @@ body {
     transition: background 0.18s ease;
 }
 
-.mirotalk-file-preview-remove:hover {
+.teamdekho-file-preview-remove:hover {
     background: rgba(255, 255, 255, 0.16);
 }
 .swal2-input:-webkit-autofill,
@@ -3908,15 +3908,15 @@ button:hover {
 }
 
 @media (max-width: 640px) {
-    .mirotalk-file-dropzone {
+    .teamdekho-file-dropzone {
         padding: 20px 16px;
     }
 
-    .mirotalk-file-preview {
+    .teamdekho-file-preview {
         flex-wrap: wrap;
     }
 
-    .mirotalk-file-preview-remove {
+    .teamdekho-file-preview-remove {
         width: 100%;
     }
 }

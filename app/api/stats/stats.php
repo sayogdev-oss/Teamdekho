@@ -1,11 +1,11 @@
 <?php
 
-$API_KEY_SECRET = "mirotalksfu_default_secret";
-$MIROTALK_URL = "https://sfu.mirotalk.com/api/v1/stats";
-//$MIROTALK_URL = "http://localhost:3010/api/v1/stats";
+$API_KEY_SECRET = "TeamDekhosfu_default_secret";
+$TeamDekho_URL = "https://sfu.teamdekho.com/api/v1/stats";
+//$TeamDekho_URL = "http://localhost:3010/api/v1/stats";
 
 $ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, $MIROTALK_URL);
+curl_setopt($ch, CURLOPT_URL, $TeamDekho_URL);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
 curl_setopt($ch, CURLOPT_HTTPGET, true);
 

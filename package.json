@@ -1,7 +1,7 @@
 {
-    "name": "mirotalksfu",
+    "name": "teamdekho",
     "version": "2.2.88",
-    "description": "WebRTC SFU browser-based video calls",
+    "description": "TeamDekho - Self-hosted video conferencing platform",
     "main": "Server.js",
     "scripts": {
         "test": "mocha tests/*.js",
@@ -13,28 +13,28 @@
         "lint": "npx prettier --write .",
         "mailpit:up": "docker-compose -f docker-compose-mailpit.yml up -d",
         "mailpit:down": "docker-compose -f docker-compose-mailpit.yml down",
-        "docker:build": "docker build --tag mirotalk/sfu:latest .",
+        "docker:build": "docker build --tag teamdekho/sfu:latest .",
         "docker:rmi": "docker image prune -f",
-        "docker:push": "docker push mirotalk/sfu:latest",
-        "docker:pull": "docker pull mirotalk/sfu:latest",
-        "docker:rmc": "docker container rm mirotalksfu --force",
-        "docker:run": "docker run -d -p 40000-40100:40000-40100 -p 3010:3010 -v ./.env:/src/.env -v ./app/src/config.js:/src/app/src/config.js:ro --name mirotalksfu mirotalk/sfu:latest",
-        "docker:run-vm": "docker run -d -p 40000-40100:40000-40100 -p 3010:3010 -v ./.env:/src/.env -v ./app/:/src/app/:ro -v ./public/:/src/public/:ro --name mirotalksfu mirotalk/sfu:latest",
-        "docker:start": "docker start mirotalksfu",
-        "docker:stop": "docker stop mirotalksfu",
+        "docker:push": "docker push teamdekho/sfu:latest",
+        "docker:pull": "docker pull teamdekho/sfu:latest",
+        "docker:rmc": "docker container rm teamdekhosfu --force",
+        "docker:run": "docker run -d -p 40000-40100:40000-40100 -p 3010:3010 -v ./.env:/src/.env -v ./app/src/config.js:/src/app/src/config.js:ro --name teamdekhosfu teamdekho/sfu:latest",
+        "docker:run-vm": "docker run -d -p 40000-40100:40000-40100 -p 3010:3010 -v ./.env:/src/.env -v ./app/:/src/app/:ro -v ./public/:/src/public/:ro --name teamdekhosfu teamdekho/sfu:latest",
+        "docker:start": "docker start teamdekhosfu",
+        "docker:stop": "docker stop teamdekhosfu",
         "rtmp:start": "docker-compose -f rtmpServers/nginx-rtmp/docker-compose.yml up -d",
         "rtmp:stop": "docker-compose -f rtmpServers/nginx-rtmp/docker-compose.yml down",
         "rtmp:restart": "docker-compose -f rtmpServers/nginx-rtmp/docker-compose.yml down && docker-compose -f rtmpServers/nginx-rtmp/docker-compose.yml up -d",
-        "rtmp:logs": "docker logs -f mirotalk-rtmp",
+        "rtmp:logs": "docker logs -f teamdekho-rtmp",
         "nms:node:start": "node rtmpServers/node-media-server/src/server.js",
         "nms:start": "docker-compose -f rtmpServers/node-media-server/docker-compose.yml up -d",
         "nms:stop": "docker-compose -f rtmpServers/node-media-server/docker-compose.yml down",
         "nms:restart": "docker-compose -f rtmpServers/node-media-server/docker-compose.yml down && docker-compose -f rtmpServers/node-media-server/docker-compose.yml up -d",
-        "nms:logs": "docker logs -f mirotalk-nms"
+        "nms:logs": "docker logs -f teamdekho-nms"
     },
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/miroslavpejic85/mirotalksfu"
+        "url": "git+https://github.com/teamdekho/teamdekhosfu"
     },
     "keywords": [
         "webrtc",
@@ -54,7 +54,7 @@
         "streaming",
         "realtime"
     ],
-    "author": "Miroslav Pejic",
+    "author": "TeamDekho Team",
     "license": "AGPL-3.0",
     "engines": {
         "node": ">=22"
@@ -91,12 +91,13 @@
         "mediasoup": "^3.20.0",
         "mediasoup-client": "3.20.0",
         "mime-types": "^3.0.2",
-        "mysql2": "^3.22.4",
+        "mysql2": "^3.22.5",
         "nodemailer": "^8.0.10",
         "openai": "^6.39.1",
         "passport": "^0.7.0",
         "passport-google-oauth20": "^2.0.0",
         "qs": "6.15.2",
+        "razorpay": "^2.9.6",
         "sanitize-filename": "^1.6.4",
         "socket.io": "4.8.3",
         "swagger-ui-express": "5.0.1",

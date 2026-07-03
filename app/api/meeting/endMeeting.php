@@ -1,8 +1,8 @@
 <?php
 
-$API_KEY_SECRET = "mirotalksfu_default_secret";
-$MIROTALK_URL = "https://sfu.mirotalk.com/api/v1/meeting";
-// $MIROTALK_URL = "http://localhost:3010/api/v1/meeting";
+$API_KEY_SECRET = "TeamDekhosfu_default_secret";
+$TeamDekho_URL = "https://sfu.teamdekho.com/api/v1/meeting";
+// $TeamDekho_URL = "http://localhost:3010/api/v1/meeting";
 
 $ROOM = "test";
 
@@ -12,7 +12,7 @@ $data = json_encode([
 ]);
 
 $ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, "$MIROTALK_URL/$ROOM");
+curl_setopt($ch, CURLOPT_URL, "$TeamDekho_URL/$ROOM");
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
 curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'DELETE');
 curl_setopt($ch, CURLOPT_POSTFIELDS, $data);

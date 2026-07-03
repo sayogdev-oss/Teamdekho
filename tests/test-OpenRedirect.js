@@ -71,7 +71,7 @@ describe('test-OpenRedirect', function () {
     it('should handle query parameters correctly', function () {
         req.path = '/join/';
         req.url =
-            '/join/?room=test&roomPassword=0&name=mirotalksfu&audio=1&video=1&screen=0&hide=0&notify=1&duration=00:00:30';
+            '/join/?room=test&roomPassword=0&name=teamdekhosfu&audio=1&video=1&screen=0&hide=0&notify=1&duration=00:00:30';
 
         middleware(null, req, res, next);
 
@@ -79,7 +79,7 @@ describe('test-OpenRedirect', function () {
         res.redirect
             .calledWith(
                 301,
-                '/join?room=test&roomPassword=0&name=mirotalksfu&audio=1&video=1&screen=0&hide=0&notify=1&duration=00:00:30'
+                '/join?room=test&roomPassword=0&name=teamdekhosfu&audio=1&video=1&screen=0&hide=0&notify=1&duration=00:00:30'
             )
             .should.be.true();
     });
@@ -87,7 +87,7 @@ describe('test-OpenRedirect', function () {
     it('should handle query parameters with token', function () {
         req.path = '/join/';
         req.url =
-            '/join/?room=test&roomPassword=0&name=mirotalksfu&audio=1&video=1&screen=0&hide=0&notify=0&token=token';
+            '/join/?room=test&roomPassword=0&name=teamdekhosfu&audio=1&video=1&screen=0&hide=0&notify=0&token=token';
 
         middleware(null, req, res, next);
 
@@ -95,7 +95,7 @@ describe('test-OpenRedirect', function () {
         res.redirect
             .calledWith(
                 301,
-                '/join?room=test&roomPassword=0&name=mirotalksfu&audio=1&video=1&screen=0&hide=0&notify=0&token=token'
+                '/join?room=test&roomPassword=0&name=teamdekhosfu&audio=1&video=1&screen=0&hide=0&notify=0&token=token'
             )
             .should.be.true();
     });

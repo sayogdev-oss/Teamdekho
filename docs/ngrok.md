@@ -1,11 +1,11 @@
-# MiroTalk SFU - Ngrok
+# TeamDekho - Ngrok
 
 ### What is the purpose and functionality of Ngrok?
 
-[https://docs.mirotalk.com/ngrok/ngrok/](https://docs.mirotalk.com/ngrok/ngrok/)
+[https://docs.teamdekho.com/ngrok/ngrok/](https://docs.teamdekho.com/ngrok/ngrok/)
 
-### How to exposing MiroTalk SFU with Ngrok?
+### How to exposing TeamDekho with Ngrok?
 
-[https://docs.mirotalk.com/mirotalk-sfu/ngrok/](https://docs.mirotalk.com/mirotalk-sfu/ngrok/)
+[https://docs.teamdekho.com/teamdekho-sfu/ngrok/](https://docs.teamdekho.com/teamdekho-sfu/ngrok/)
 
 ---

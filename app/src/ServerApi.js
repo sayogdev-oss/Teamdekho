@@ -6,7 +6,7 @@ const CryptoJS = require('crypto-js');
 const config = require('./config');
 const { v4: uuidV4 } = require('uuid');
 
-const JWT_KEY = config.security?.jwt?.key || 'mirotalksfu_jwt_secret';
+const JWT_KEY = config.security?.jwt?.key || 'teamdekhosfu_jwt_secret';
 const JWT_EXP = config.security?.jwt?.exp || '1h';
 
 module.exports = class ServerApi {

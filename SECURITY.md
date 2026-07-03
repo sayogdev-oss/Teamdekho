@@ -4,12 +4,12 @@
 
 Security is very important to us.
 
-If you have discovered a security issue, please contact miroslav.pejic.85@gmail.com directly. Please refrain from directly creating a GitHub issue and publicly disclosing the vulnerability.
+If you have discovered a security issue, please contact support@teamdekho.in directly. Please refrain from directly creating a GitHub issue and publicly disclosing the vulnerability.
 We prefer a Coordinated Vulnerability Disclosure (CVD) to properly understand and fix the root cause problem.
 
 Your report should include:
 
-- Product version ([GitHub](https://github.com/miroslavpejic85/mirotalksfu/commits/main) commit hash or [DockerHub](https://hub.docker.com/r/mirotalk/sfu) sha256 digest hash)
+- Product version ([GitHub](https://github.com/teamdekho/teamdekhosfu/commits/main) commit hash or [DockerHub](https://hub.docker.com/r/teamdekho/sfu) sha256 digest hash)
 - The affected component if possible (RoomClient.js, Server.js, etc.)
 - A vulnerability description
 - Reproduction steps

@@ -1,7 +1,7 @@
 {
-    "name": "mirotalk-webhook",
+    "name": "teamdekho-webhook",
     "version": "1.0.2",
-    "description": "MiroTalk WebHook endpoint example",
+    "description": "TeamDekho WebHook endpoint example",
     "main": "server.js",
     "scripts": {
         "start": "node server.js"
@@ -10,7 +10,7 @@
         "webhook",
         "server"
     ],
-    "author": "Miroslav Pejic",
+    "author": "TeamDekho Team",
     "license": "AGPLv3",
     "dependencies": {
         "express": "5.1.0",

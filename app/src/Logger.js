@@ -15,7 +15,7 @@ const LOGS_JSON = config.system?.console?.json;
 const LOGS_JSON_PRETTY = config.system?.console?.json_pretty;
 
 module.exports = class Logger {
-    constructor(appName = 'miroTalkSfu') {
+    constructor(appName = 'TeamDekhoSfu') {
         this.appName = colors.yellow(appName);
         this.debugOn = config.system?.console?.debug;
         this.timeStart = Date.now();

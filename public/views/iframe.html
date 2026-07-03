@@ -3,18 +3,18 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>MiroTalk SFU Iframe demo</title>
+        <title>TeamDekho Iframe demo</title>
 
-        <!-- Replace sfu.mirotalk.com with YOUR-DOMAIN-NAME -->
-        <script src="https://sfu.mirotalk.com/js/Iframe.js" defer></script>
+        <!-- Replace sfu.teamdekho.com with YOUR-DOMAIN-NAME -->
+        <script src="https://sfu.teamdekho.com/js/Iframe.js" defer></script>
 
         <script>
             document.addEventListener('DOMContentLoaded', function () {
-                const domain = 'sfu.mirotalk.com'; // YOUR-DOMAIN-NAME
+                const domain = 'sfu.teamdekho.com'; // YOUR-DOMAIN-NAME
                 const options = {
                     room: 'test',
                     roomPassword: 0,
-                    name: 'mirotalk',
+                    name: 'teamdekho',
                     audio: 0,
                     video: 0,
                     screen: 0,
@@ -25,7 +25,7 @@
                     width: '100vw',
                     height: '100vh',
                     parentNode: document.querySelector('#meet'),
-                }; // https://docs.mirotalk.com/mirotalk-sfu/join-room/
+                }; // https://docs.teamdekho.com/teamdekho-sfu/join-room/
                 const api = new IframeApi(domain, options);
             });
         </script>

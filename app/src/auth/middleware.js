@@ -39,7 +39,7 @@ function isHost(req, res, next) {
     if (req.xhr || req.headers.accept?.includes('application/json')) {
       return res.status(401).json({ error: 'Not authenticated' });
     }
-    return res.redirect('/host/login');
+    return res.redirect('/host/login?returnTo=' + encodeURIComponent(req.originalUrl));
   }
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
@@ -49,7 +49,7 @@ function isHost(req, res, next) {
     if (req.xhr || req.headers.accept?.includes('application/json')) {
       return res.status(401).json({ error: 'Invalid token' });
     }
-    return res.redirect('/host/login');
+    return res.redirect('/host/login?returnTo=' + encodeURIComponent(req.originalUrl));
   }
 }
 

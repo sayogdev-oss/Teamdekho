@@ -1,7 +1,7 @@
 services:
-    mirotalk-nms:
-        container_name: mirotalk-nms
-        image: mirotalk/nms:latest
+    teamdekho-nms:
+        container_name: teamdekho-nms
+        image: teamdekho/nms:latest
         volumes:
             - ./src/config.js/:/app/src/config.js/:ro
             # - /etc/letsencrypt/live/your-domain-name/fullchain.pem/:/app/src/cert.pem/:ro

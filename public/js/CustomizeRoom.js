@@ -273,7 +273,7 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 const joinUrl = buildJoinUrl();
                 await navigator.share({
-                    title: document.title || 'MiroTalk Room',
+                    title: document.title || 'TeamDekho Room',
                     url: joinUrl.toString(),
                 });
             } catch (err) {

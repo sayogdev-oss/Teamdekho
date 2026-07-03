@@ -1,11 +1,11 @@
-# MiroTalk SFU - Self Hosting
+# TeamDekho - Self Hosting
 
-### How can I self-host MiroTalk SFU on my own server?
+### How can I self-host TeamDekho on my own server?
 
-[https://docs.mirotalk.com/mirotalk-sfu/self-hosting/](https://docs.mirotalk.com/mirotalk-sfu/self-hosting/)
+[https://docs.teamdekho.com/teamdekho-sfu/self-hosting/](https://docs.teamdekho.com/teamdekho-sfu/self-hosting/)
 
 ### Automation scripts
 
-[https://docs.mirotalk.com/scripts/about/](https://docs.mirotalk.com/scripts/about/)
+[https://docs.teamdekho.com/scripts/about/](https://docs.teamdekho.com/scripts/about/)
 
 ---

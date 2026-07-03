@@ -24,14 +24,14 @@ $ cp config.template.js config.js
 # Copy the docker.compose.yml
 $ cp docker-compose.template.yml docker-compose.yml
 
-# Pull the official mirotalk rtmp image
-$ docker pull mirotalk/nms:latest
+# Pull the official teamdekho rtmp image
+$ docker pull teamdekho/nms:latest
 
 # Create and start containers
 $ docker-compose up -d
 
 # Check the logs
-$ docker logs -f mirotalk-nms
+$ docker logs -f teamdekho-nms
 
 # To stop and remove resources
 $ docker-compose down

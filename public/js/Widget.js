@@ -1,9 +1,9 @@
 'use strict';
 
 /**
- * MiroTalk Widget Factory - Main class for creating and managing widgets
+ * TeamDekho Widget Factory - Main class for creating and managing widgets
  */
-class MiroTalkWidget {
+class TeamDekhoWidget {
     static DEFAULT_OPTIONS = {
         autoJoin: true,
         theme: 'dark',
@@ -29,11 +29,11 @@ class MiroTalkWidget {
             customMessages: {
                 heading: 'Need a hand?',
                 subheading:
-                    'Hop on a <span style="font-weight: bold">Free 1:1 or Group Consultation</span> with a MiroTalk Expert right now!',
+                    'Hop on a <span style="font-weight: bold">Free 1:1 or Group Consultation</span> with a TeamDekho Expert right now!',
                 connectText: 'connect in < 10 seconds',
                 onlineText: 'We are online',
                 offlineText: 'We are offline',
-                poweredBy: 'Powered by <span class="mirotalk-powered-by">MiroTalk</span>',
+                poweredBy: 'Powered by <span class="teamdekho-powered-by">TeamDekho</span>',
             },
         },
     };
@@ -45,7 +45,7 @@ class MiroTalkWidget {
         this.domain = domain;
         this.roomId = roomId;
         this.userName = userName;
-        this.options = this.mergeDeep(MiroTalkWidget.DEFAULT_OPTIONS, options);
+        this.options = this.mergeDeep(TeamDekhoWidget.DEFAULT_OPTIONS, options);
 
         // Initialize widget state and status
         this.widgetState = this.options.widgetState;
@@ -71,8 +71,8 @@ class MiroTalkWidget {
     }
 
     initWidgetRegistry() {
-        if (!window.miroTalkWidgets) {
-            window.miroTalkWidgets = new Map();
+        if (!window.TeamDekhoWidgets) {
+            window.TeamDekhoWidgets = new Map();
         }
     }
 
@@ -119,12 +119,12 @@ class MiroTalkWidget {
 
             // Automatically minimize on creation
             if (this.options.widgetState === 'minimized' && this.isInitialized) {
-                window.miroTalkWidgetAction('minimize', widget);
+                window.TeamDekhoWidgetAction('minimize', widget);
             }
 
             // Automatically close on creation
             if (this.options.widgetState === 'closed' && this.isInitialized) {
-                window.miroTalkWidgetAction('close', widget);
+                window.TeamDekhoWidgetAction('close', widget);
             }
 
             this.isInitialized = false; // Prevent re-initialization
@@ -251,7 +251,7 @@ class MiroTalkWidget {
     async loadSupportWidgetAssets() {
         await this.injectExternalCSS(
             `${this.protocol}://${this.domain}/css/widgets/Support.css`,
-            'mirotalk-support-css'
+            'teamdekho-support-css'
         );
     }
 
@@ -276,7 +276,7 @@ class MiroTalkWidget {
         const { customMessages, expertImages, position } = supportWidget;
 
         const widget = document.createElement('div');
-        widget.className = `mirotalk-support-widget ${position} ${theme === 'light' ? 'light-theme' : ''}`;
+        widget.className = `teamdekho-support-widget ${position} ${theme === 'light' ? 'light-theme' : ''}`;
         widget.innerHTML = this.getSupportWidgetTemplate({ customMessages, expertImages });
 
         const widgetId = this.generateWidgetId('widget');
@@ -292,12 +292,12 @@ class MiroTalkWidget {
                 <div class="online-text" style="display: ${this.isOnline ? 'inline' : 'none'}">${customMessages.onlineText}</div>
                 <div class="offline-text" style="display: ${this.isOnline ? 'none' : 'inline'}">${customMessages.offlineText}</div>
                 <div class="widget-controls">
-                    <button class="minimize-btn" onclick="miroTalkWidgetAction('minimize', this)" title="Minimize">
+                    <button class="minimize-btn" onclick="TeamDekhoWidgetAction('minimize', this)" title="Minimize">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M19 13H5v-2h14v2z"/>
                         </svg>
                     </button>
-                    <div class="close-btn" onclick="miroTalkWidgetAction('close', this)" title="Close">&times;</div>
+                    <div class="close-btn" onclick="TeamDekhoWidgetAction('close', this)" title="Close">&times;</div>
                 </div>
             </div>
             <h2 class="main-heading">${customMessages.heading}</h2>
@@ -344,7 +344,7 @@ class MiroTalkWidget {
         return buttons
             .map(
                 (btn) => `
-            <button class="btn" onclick="miroTalkWidgetAction('${btn.action}', this)">
+            <button class="btn" onclick="TeamDekhoWidgetAction('${btn.action}', this)">
                 <div class="btn-icon">${btn.icon}</div>
                 <span class="btn-text">${btn.text}</span>
             </button>`
@@ -357,7 +357,7 @@ class MiroTalkWidget {
     // ============================================================================
 
     minimizeWidget() {
-        const widget = document.querySelector('.mirotalk-support-widget');
+        const widget = document.querySelector('.teamdekho-support-widget');
         if (!widget) {
             console.warn('Widget not found for minimizing');
             return;
@@ -370,8 +370,8 @@ class MiroTalkWidget {
     }
 
     restoreWidget() {
-        const widget = document.querySelector('.mirotalk-support-widget');
-        const minimizedBtn = document.querySelector('.mirotalk-minimized-btn');
+        const widget = document.querySelector('.teamdekho-support-widget');
+        const minimizedBtn = document.querySelector('.teamdekho-minimized-btn');
 
         if (widget) {
             widget.classList.remove('minimized');
@@ -391,7 +391,7 @@ class MiroTalkWidget {
     }
 
     reopenWidget() {
-        const reopenerBtn = document.querySelector('.mirotalk-reopener-btn');
+        const reopenerBtn = document.querySelector('.teamdekho-reopener-btn');
         if (reopenerBtn) reopenerBtn.remove();
         this.createWidget();
         console.log('Widget reopened');
@@ -402,7 +402,7 @@ class MiroTalkWidget {
     // ============================================================================
 
     createMinimizedButton() {
-        this.removeExistingElement('.mirotalk-minimized-btn');
+        this.removeExistingElement('.teamdekho-minimized-btn');
 
         if (!this.options.supportWidget?.position) {
             console.error('Support widget position not defined');
@@ -411,7 +411,7 @@ class MiroTalkWidget {
 
         const minimizedBtn = this.createElement('div', {
             className: this.buildClassNames([
-                'mirotalk-minimized-btn',
+                'teamdekho-minimized-btn',
                 this.options.supportWidget.position,
                 this.options.theme === 'light' ? 'light-theme' : '',
             ]),
@@ -441,7 +441,7 @@ class MiroTalkWidget {
     }
 
     createReopenerButton() {
-        this.removeExistingElement('.mirotalk-reopener-btn');
+        this.removeExistingElement('.teamdekho-reopener-btn');
 
         if (!this.options.supportWidget?.position) {
             console.error('Support widget position not defined');
@@ -450,7 +450,7 @@ class MiroTalkWidget {
 
         const reopenerBtn = this.createElement('div', {
             className: this.buildClassNames([
-                'mirotalk-reopener-btn',
+                'teamdekho-reopener-btn',
                 this.options.supportWidget.position,
                 this.options.theme === 'light' ? 'light-theme' : 'dark-theme',
             ]),
@@ -504,7 +504,7 @@ class MiroTalkWidget {
     updateOnlineStatus(online) {
         this.isOnline = online;
 
-        const elementsToUpdate = ['.mirotalk-support-widget', '.mirotalk-minimized-btn'];
+        const elementsToUpdate = ['.teamdekho-support-widget', '.teamdekho-minimized-btn'];
 
         elementsToUpdate.forEach((selector) => {
             const element = document.querySelector(selector);
@@ -582,7 +582,7 @@ class MiroTalkWidget {
         }
     }
 
-    openMiroTalk() {
+    openTeamDekho() {
         window.open(`https://${this.domain}`, '_blank');
     }
 
@@ -648,7 +648,7 @@ class MiroTalkWidget {
     }
 
     registerWidget(widgetId, element) {
-        window.miroTalkWidgets.set(widgetId, this);
+        window.TeamDekhoWidgets.set(widgetId, this);
         element.setAttribute('data-widget-id', widgetId);
     }
 
@@ -662,14 +662,14 @@ class MiroTalkWidget {
     }
 
     removeAllWidgetElements() {
-        const selectors = ['.mirotalk-support-widget', '.mirotalk-minimized-btn', '.mirotalk-reopener-btn'];
+        const selectors = ['.teamdekho-support-widget', '.teamdekho-minimized-btn', '.teamdekho-reopener-btn'];
         selectors.forEach((selector) => {
             document.querySelectorAll(selector).forEach((element) => element.remove());
         });
     }
 
     getParentNode() {
-        return document.querySelector('#mirotalk-widget') || document.body;
+        return document.querySelector('#teamdekho-widget') || document.body;
     }
 
     clearParentNode(parentNode) {
@@ -677,10 +677,10 @@ class MiroTalkWidget {
     }
 
     getWidgetFromElement(element) {
-        const widget = element.closest('.mirotalk-support-widget, .mirotalk-minimized-btn, .mirotalk-reopener-btn');
+        const widget = element.closest('.teamdekho-support-widget, .teamdekho-minimized-btn, .teamdekho-reopener-btn');
         if (widget) {
             const widgetId = widget.getAttribute('data-widget-id');
-            return window.miroTalkWidgets ? window.miroTalkWidgets.get(widgetId) : this;
+            return window.TeamDekhoWidgets ? window.TeamDekhoWidgets.get(widgetId) : this;
         }
         return this;
     }
@@ -744,10 +744,10 @@ class MiroTalkWidget {
             this.clearParentNode(parentNode);
         }
 
-        if (window.miroTalkWidgets) {
-            for (const [key, widget] of window.miroTalkWidgets.entries()) {
+        if (window.TeamDekhoWidgets) {
+            for (const [key, widget] of window.TeamDekhoWidgets.entries()) {
                 if (widget === this) {
-                    window.miroTalkWidgets.delete(key);
+                    window.TeamDekhoWidgets.delete(key);
                     break;
                 }
             }
@@ -779,10 +779,10 @@ class MiroTalkWidget {
 // GLOBAL ACTION HANDLER
 // ============================================================================
 
-window.miroTalkWidgetAction = function (action, element) {
+window.TeamDekhoWidgetAction = function (action, element) {
     try {
         const widgetElement = element.closest(
-            '.mirotalk-support-widget, .mirotalk-minimized-btn, .mirotalk-reopener-btn'
+            '.teamdekho-support-widget, .teamdekho-minimized-btn, .teamdekho-reopener-btn'
         );
 
         if (!widgetElement) {
@@ -791,7 +791,7 @@ window.miroTalkWidgetAction = function (action, element) {
         }
 
         const widgetId = widgetElement.getAttribute('data-widget-id');
-        const widget = window.miroTalkWidgets?.get(widgetId);
+        const widget = window.TeamDekhoWidgets?.get(widgetId);
 
         if (!widget) {
             console.error('Widget instance not found');
@@ -826,12 +826,12 @@ window.miroTalkWidgetAction = function (action, element) {
 // ============================================================================
 
 document.addEventListener('DOMContentLoaded', function () {
-    const autoInit = document.querySelector('[data-mirotalk-auto]');
+    const autoInit = document.querySelector('[data-teamdekho-auto]');
     if (!autoInit) return;
 
     try {
         const buttonsAttr = autoInit.getAttribute('data-buttons');
-        let buttonsConfig = { ...MiroTalkWidget.DEFAULT_OPTIONS.supportWidget.buttons };
+        let buttonsConfig = { ...TeamDekhoWidget.DEFAULT_OPTIONS.supportWidget.buttons };
         if (buttonsAttr) {
             // Normalize and map
             const requested = buttonsAttr
@@ -849,12 +849,12 @@ document.addEventListener('DOMContentLoaded', function () {
             domain: autoInit.getAttribute('data-domain') || window.location.host,
             roomId: autoInit.getAttribute('data-room') || 'support-room',
             userName: autoInit.getAttribute('data-user') || `guest-${Math.floor(Math.random() * 10000)}`,
-            theme: autoInit.getAttribute('data-theme') || MiroTalkWidget.DEFAULT_OPTIONS.theme,
-            widgetState: autoInit.getAttribute('data-widget-state') || MiroTalkWidget.DEFAULT_OPTIONS.widgetState,
+            theme: autoInit.getAttribute('data-theme') || TeamDekhoWidget.DEFAULT_OPTIONS.theme,
+            widgetState: autoInit.getAttribute('data-widget-state') || TeamDekhoWidget.DEFAULT_OPTIONS.widgetState,
             draggable:
                 autoInit.getAttribute('data-draggable') === 'true' ||
-                MiroTalkWidget.DEFAULT_OPTIONS.supportWidget.draggable,
-            position: autoInit.getAttribute('data-position') || MiroTalkWidget.DEFAULT_OPTIONS.supportWidget.position,
+                TeamDekhoWidget.DEFAULT_OPTIONS.supportWidget.draggable,
+            position: autoInit.getAttribute('data-position') || TeamDekhoWidget.DEFAULT_OPTIONS.supportWidget.position,
             checkOnline: autoInit.getAttribute('data-check-online') === 'true',
             expertImages: autoInit.getAttribute('data-expert-images')
                 ? autoInit
@@ -862,35 +862,35 @@ document.addEventListener('DOMContentLoaded', function () {
                       .split(',')
                       .map((url) => url.trim())
                       .filter(Boolean)
-                : MiroTalkWidget.DEFAULT_OPTIONS.supportWidget.expertImages,
+                : TeamDekhoWidget.DEFAULT_OPTIONS.supportWidget.expertImages,
             customMessages: {
                 heading:
                     autoInit.getAttribute('data-heading') ||
-                    MiroTalkWidget.DEFAULT_OPTIONS.supportWidget.customMessages.heading,
+                    TeamDekhoWidget.DEFAULT_OPTIONS.supportWidget.customMessages.heading,
                 subheading:
                     autoInit.getAttribute('data-subheading') ||
-                    MiroTalkWidget.DEFAULT_OPTIONS.supportWidget.customMessages.subheading,
+                    TeamDekhoWidget.DEFAULT_OPTIONS.supportWidget.customMessages.subheading,
                 connectText:
                     autoInit.getAttribute('data-connect-text') ||
-                    MiroTalkWidget.DEFAULT_OPTIONS.supportWidget.customMessages.connectText,
+                    TeamDekhoWidget.DEFAULT_OPTIONS.supportWidget.customMessages.connectText,
                 onlineText:
                     autoInit.getAttribute('data-online-text') ||
-                    MiroTalkWidget.DEFAULT_OPTIONS.supportWidget.customMessages.onlineText,
+                    TeamDekhoWidget.DEFAULT_OPTIONS.supportWidget.customMessages.onlineText,
                 offlineText:
                     autoInit.getAttribute('data-offline-text') ||
-                    MiroTalkWidget.DEFAULT_OPTIONS.supportWidget.customMessages.offlineText,
+                    TeamDekhoWidget.DEFAULT_OPTIONS.supportWidget.customMessages.offlineText,
                 poweredBy:
                     autoInit.getAttribute('data-powered-by') ||
-                    MiroTalkWidget.DEFAULT_OPTIONS.supportWidget.customMessages.poweredBy,
+                    TeamDekhoWidget.DEFAULT_OPTIONS.supportWidget.customMessages.poweredBy,
             },
         };
 
         if (config.domain) {
-            new MiroTalkWidget(config.domain, config.roomId, config.userName, {
+            new TeamDekhoWidget(config.domain, config.roomId, config.userName, {
                 widgetState: config.widgetState,
                 theme: config.theme,
                 supportWidget: {
-                    ...MiroTalkWidget.DEFAULT_OPTIONS.supportWidget,
+                    ...TeamDekhoWidget.DEFAULT_OPTIONS.supportWidget,
                     draggable: config.draggable,
                     position: config.position,
                     expertImages: config.expertImages,
@@ -901,6 +901,6 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         }
     } catch (error) {
-        console.error('Failed to auto-initialize MiroTalk Widget:', error);
+        console.error('Failed to auto-initialize TeamDekho Widget:', error);
     }
 });

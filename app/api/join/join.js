@@ -5,11 +5,11 @@ async function getJoin() {
         // Use dynamic import with await
         const { default: fetch } = await import('node-fetch');
 
-        const API_KEY_SECRET = 'mirotalksfu_default_secret';
-        const MIROTALK_URL = 'https://sfu.mirotalk.com/api/v1/join';
-        //const MIROTALK_URL = 'http://localhost:3010/api/v1/join';
+        const API_KEY_SECRET = 'teamdekhosfu_default_secret';
+        const TeamDekho_URL = 'https://sfu.teamdekho.com/api/v1/join';
+        //const TeamDekho_URL = 'http://localhost:3010/api/v1/join';
 
-        const response = await fetch(MIROTALK_URL, {
+        const response = await fetch(TeamDekho_URL, {
             method: 'POST',
             headers: {
                 authorization: API_KEY_SECRET,
@@ -18,7 +18,7 @@ async function getJoin() {
             body: JSON.stringify({
                 room: 'test',
                 roomPassword: false,
-                name: 'mirotalksfu',
+                name: 'teamdekhosfu',
                 avatar: false,
                 audio: false,
                 video: false,

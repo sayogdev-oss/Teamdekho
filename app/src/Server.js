@@ -1,5 +1,4 @@
 'use strict';
-
 /*
 ███████ ███████ ██████  ██    ██ ███████ ██████  
 ██      ██      ██   ██ ██    ██ ██      ██   ██ 
@@ -62,8 +61,8 @@ dev dependencies: {
  * @link    Official Live demo: https://sfu.teamdekho.com
  * @license For open source use: AGPLv3
  * @license For commercial or closed source, contact us at license.teamdekho@gmail.com or purchase directly via CodeCanyon
- * @license CodeCanyon: https://codecanyon.net/item/mirotalk-sfu-webrtc-realtime-video-conferences/40769970
- * @author  Miroslav Pejic - miroslav.pejic.85@gmail.com
+ * @license CodeCanyon: https://codecanyon.net/item/teamdekho-sfu-webrtc-realtime-video-conferences/40769970
+ * @author  TeamDekho Team - support@teamdekho.in
  * @version 2.2.88
  *
  */
@@ -258,6 +257,7 @@ const slackEnabled = config?.integrations?.slack?.enabled || false;
 const slackSigningSecret = config?.integrations?.slack?.signingSecret || '';
 
 const app = express();
+app.use(cookieParser());
 
 const options = {
     cert: fs.readFileSync(path.join(__dirname, config?.server?.ssl.cert || '../ssl/cert.pem'), 'utf-8'),
@@ -269,15 +269,18 @@ const corsOptions = {
     methods: config.server?.cors?.methods || ['GET', 'POST'],
 };
 
-app.use(cookieParser());
-app.use(express.json({ limit: '50mb' }));
+app.use(express.json({
+  limit: '50mb',
+  verify: (req, res, buf) => { req.rawBody = buf; }
+}));
 app.use(express.urlencoded({ extended: true }));
 app.use('/auth', express.static(path.join(__dirname, '../../public')));
 
 // TeamDekho: Google Auth Routes
-app.get('/auth/google',
-  passport.authenticate('google', { scope: ['profile', 'email'] })
-);
+app.get("/auth/google", (req, res, next) => {
+  const state = req.query.state || '';
+  passport.authenticate("google", { scope: ["profile", "email"], state })(req, res, next);
+});
 
 app.get('/auth/google/callback',
   (req, res, next) => {
@@ -290,19 +293,43 @@ app.get('/auth/google/callback',
         console.error('[TeamDekho Auth] No user returned:', info);
         return res.redirect('/host/login?error=no_user');
       }
+      // 30-day persistent session
       const token = generateToken(user);
+      const isProd = process.env.NODE_ENV === 'production';
       res.cookie('td_token', token, {
         httpOnly: true,
-        maxAge: 7 * 24 * 60 * 60 * 1000,
-        sameSite: 'lax'
+        secure: isProd,
+        maxAge: 30 * 24 * 60 * 60 * 1000,
+        sameSite: isProd ? 'strict' : 'lax'
       });
-      console.log('[TeamDekho Auth] Login successful:', user.email);
-      const redirectTo = req.query.redirect;
-      const topic = req.query.topic;
-      if (redirectTo === 'meeting' && topic) {
-        res.redirect('/free/dashboard?newmeeting=' + encodeURIComponent(topic));
+      console.log('[TeamDekho Auth] Login successful:', user.email, '| Plan ID:', user.plan_id);
+
+      // Check state for return URL or topic
+      let state = {};
+      try {
+        state = JSON.parse(decodeURIComponent(req.query.state || '{}'));
+      } catch (e) {
+        console.error('[TeamDekho Auth] State decode error:', e);
+      }
+      
+      const { returnTo, topic, redirect } = state;
+
+      if (returnTo && returnTo.startsWith('/')) {
+        return res.redirect(returnTo);
+      }
+      
+      if (redirect === 'meeting' && topic) {
+        const isPaid = user.plan_id && user.plan_id > 1;
+        const dashboard = isPaid ? '/host/dashboard' : '/free/dashboard';
+        return res.redirect(dashboard + '?newmeeting=' + encodeURIComponent(topic));
+      }
+
+      // Default: plan-based dashboard redirect
+      const isPaid = user.plan_id && user.plan_id > 1;
+      if (isPaid) {
+        return res.redirect('/host/dashboard');
       } else {
-        res.redirect('/free/dashboard');
+        return res.redirect('/free/dashboard');
       }
     })(req, res, next);
   }
@@ -314,7 +341,7 @@ app.get('/host/login', (req, res) => {
 });
 
 app.get('/host/dashboard', isHost, (req, res) => {
-  res.sendFile(path.join(__dirname, '../../public/views/hostDashboard.html'));
+  res.sendFile(path.join(__dirname, '../../public/views/freeDashboard.html'));
 });
 
 app.get('/api/host/me', isHost, (req, res) => {
@@ -368,16 +395,7 @@ app.post('/api/host/passcode', isHost, async (req, res) => {
   }
 });
 
-app.get('/join/:roomId', (req, res) => {
-  const roomId = req.params.roomId;
-  const pwd = req.query.pwd || '';
-  // Redirect to MiroTalk room with lobby support
-  if (pwd) {
-    res.redirect(`/join/?room=${encodeURIComponent(roomId)}&password=${encodeURIComponent(pwd)}`);
-  } else {
-    res.redirect(`/join/?room=${encodeURIComponent(roomId)}`);
-  }
-});
+
 
 app.get('/api/meetings/info/:meetingId', async (req, res) => {
   try {
@@ -426,6 +444,161 @@ app.get('/api/meetings/info/:meetingId', async (req, res) => {
 
 app.get('/j/:meetingId', (req, res) => {
   res.sendFile(path.join(__dirname, '../../public/views/joinMeeting.html'));
+});
+
+// TeamDekho: Public plans list for pricing page
+app.get('/api/plans', async (req, res) => {
+  try {
+    const db = require('./db/connection');
+    const [rows] = await db.execute(
+      `SELECT id, name, price_monthly, max_participants, max_duration_minutes, 
+              can_record, can_schedule, can_passcode, can_breakout_rooms, 
+              can_rtmp_stream, can_transcription, features 
+       FROM td_plans WHERE is_active = 1 ORDER BY id ASC`
+    );
+    res.json({ plans: rows });
+  } catch (err) {
+    console.error('[TeamDekho] Fetch plans error:', err.message);
+    res.status(500).json({ error: 'Failed to load plans' });
+  }
+});
+
+// TeamDekho: Create Razorpay subscription for a paid plan
+app.post('/api/subscribe/:planId', isHost, async (req, res) => {
+  try {
+    const Razorpay = require('razorpay');
+    const razorpay = new Razorpay({
+      key_id: process.env.RAZORPAY_KEY_ID,
+      key_secret: process.env.RAZORPAY_KEY_SECRET,
+    });
+    const db = require('./db/connection');
+    const user = req.user;
+    const planId = parseInt(req.params.planId);
+
+    if (![2, 3].includes(planId)) {
+      return res.status(400).json({ error: 'Invalid plan' });
+    }
+
+    const [planRows] = await db.execute(
+      'SELECT id, name, razorpay_plan_id, price_monthly FROM td_plans WHERE id = ? AND is_active = 1',
+      [planId]
+    );
+    const plan = planRows[0];
+    if (!plan || !plan.razorpay_plan_id) {
+      return res.status(400).json({ error: 'Plan not available' });
+    }
+
+    const [hostRows] = await db.execute(
+      'SELECT razorpay_customer_id FROM td_hosts WHERE id = ?',
+      [user.id]
+    );
+    let customerId = hostRows[0]?.razorpay_customer_id;
+
+    if (!customerId) {
+      const customer = await razorpay.customers.create({
+        name: user.name,
+        email: user.email,
+        fail_existing: 0,
+      });
+      customerId = customer.id;
+      await db.execute(
+        'UPDATE td_hosts SET razorpay_customer_id = ? WHERE id = ?',
+        [customerId, user.id]
+      );
+    }
+
+    const subscription = await razorpay.subscriptions.create({
+      plan_id: plan.razorpay_plan_id,
+      customer_notify: 1,
+      total_count: 120,
+      notes: { host_id: user.id, plan_id: plan.id },
+    });
+
+    await db.execute(
+      'UPDATE td_hosts SET razorpay_subscription_id = ?, subscription_status = ? WHERE id = ?',
+      [subscription.id, 'created', user.id]
+    );
+
+    res.json({
+      success: true,
+      subscriptionId: subscription.id,
+      keyId: process.env.RAZORPAY_KEY_ID,
+      planName: plan.name,
+      amount: plan.price_monthly,
+    });
+  } catch (err) {
+    console.error('[TeamDekho] Subscription create error:', err.message);
+    res.status(500).json({ error: 'Failed to create subscription' });
+  }
+});
+
+// TeamDekho: Razorpay webhook — source of truth for subscription state
+app.post('/api/webhooks/razorpay', async (req, res) => {
+  try {
+    const crypto = require('crypto');
+    const signature = req.headers['x-razorpay-signature'];
+    const expectedSignature = crypto
+      .createHmac('sha256', process.env.RAZORPAY_WEBHOOK_SECRET)
+      .update(req.rawBody)
+      .digest('hex');
+
+    if (signature !== expectedSignature) {
+      console.warn('[TeamDekho Webhook] Invalid signature');
+      return res.status(400).json({ error: 'Invalid signature' });
+    }
+
+    const db = require('./db/connection');
+    const event = req.body.event;
+    const payload = req.body.payload;
+    console.log('[TeamDekho Webhook] Event received:', event);
+
+    if (event === 'subscription.activated' || event === 'subscription.charged') {
+      const sub = payload.subscription.entity;
+      const hostId = sub.notes?.host_id;
+      const planId = sub.notes?.plan_id;
+      if (hostId && planId) {
+        const nextDue = sub.current_end ? new Date(sub.current_end * 1000) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+        await db.execute(
+          `UPDATE td_hosts SET plan_id = ?, subscription_status = 'active', paid_at = NOW(), plan_expires_at = ? WHERE id = ?`,
+          [planId, nextDue, hostId]
+        );
+        if (payload.payment) {
+          const pay = payload.payment.entity;
+          await db.execute(
+            `INSERT INTO td_payments (host_id, plan_id, amount, currency, billing_cycle, payment_gateway, gateway_payment_id, gateway_subscription_id, status, paid_at, plan_start, plan_end)
+             VALUES (?, ?, ?, 'INR', 'monthly', 'razorpay', ?, ?, 'success', NOW(), NOW(), ?)`,
+            [hostId, planId, pay.amount / 100, pay.id, sub.id, nextDue]
+          );
+        }
+        console.log(`[TeamDekho Webhook] Activated plan ${planId} for host ${hostId}`);
+      }
+    }
+
+    if (event === 'subscription.pending') {
+      const sub = payload.subscription.entity;
+      const hostId = sub.notes?.host_id;
+      if (hostId) {
+        await db.execute(`UPDATE td_hosts SET subscription_status = 'pending' WHERE id = ?`, [hostId]);
+      }
+    }
+
+    if (event === 'subscription.halted' || event === 'subscription.cancelled') {
+      const sub = payload.subscription.entity;
+      const hostId = sub.notes?.host_id;
+      if (hostId) {
+        await db.execute(
+          `UPDATE td_hosts SET plan_id = 1, subscription_status = ? WHERE id = ?`,
+          [event === 'subscription.cancelled' ? 'cancelled' : 'halted', hostId]
+        );
+        console.log(`[TeamDekho Webhook] Reverted host ${hostId} to Free plan (${event})`);
+      }
+    }
+
+    res.json({ status: 'ok' });
+  } catch (err) {
+    console.error('[TeamDekho Webhook] Error:', err.message);
+    res.status(500).json({ error: 'Webhook processing failed' });
+  }
 });
 
 // Create meeting
@@ -560,7 +733,7 @@ const host = config?.server?.hostUrl || `http://localhost:${config?.server?.list
 const trustProxy = Boolean(config?.server?.trustProxy);
 
 const jwtCfg = {
-    JWT_KEY: config?.security?.jwt?.key || 'mirotalksfu_jwt_secret',
+    JWT_KEY: config?.security?.jwt?.key || 'teamdekhosfu_jwt_secret',
     JWT_EXP: config?.security?.jwt?.exp || '1h',
 };
 
@@ -656,7 +829,7 @@ if (enabled && commands.length > 0 && token) {
 // Stats
 const defaultStats = {
     enabled: true,
-    src: 'https://stats.mirotalk.com/script.js',
+    src: 'https://stats.teamdekho.com/script.js',
     id: '41d26670-f275-45bb-af82-3ce91fe57756',
 };
 
@@ -723,7 +896,6 @@ const views = {
     html: path.join(__dirname, '../../public/views'),
     about: path.join(__dirname, '../../', 'public/views/about.html'),
     landing: path.join(__dirname, '../../', 'public/views/landing.html'),
-    login: path.join(__dirname, '../../', 'public/views/login.html'),
     activeRooms: path.join(__dirname, '../../', 'public/views/activeRooms.html'),
     customizeRoom: path.join(__dirname, '../../', 'public/views/customizeRoom.html'),
     newRoom: path.join(__dirname, '../../', 'public/views/newroom.html'),
@@ -733,6 +905,7 @@ const views = {
     room: path.join(__dirname, '../../', 'public/views/Room.html'),
     rtmpStreamer: path.join(__dirname, '../../', 'public/views/RtmpStreamer.html'),
     whoAreYou: path.join(__dirname, '../../', 'public/views/whoAreYou.html'),
+    login: path.join(__dirname, '../../', 'public/views/hostLogin.html'),
 };
 
 const filesPath = [
@@ -887,7 +1060,6 @@ function startServer() {
     app.use(compression());
     app.use(express.json({ limit: '50mb' })); // Handles JSON payloads
     // TeamDekho: Auth middleware
-    app.use(cookieParser());
     app.use(session({
       secret: process.env.SESSION_SECRET || 'teamdekho_super_secret_2026',
       resave: false,
@@ -947,7 +1119,7 @@ function startServer() {
     // OpenID Connect - Dynamically set baseURL based on incoming host and protocol
     if (OIDC.enabled) {
         // Skip OIDC for static assets to avoid state cookie races on /auth/callback
-        // when `authRequired: true`. See: https://github.com/miroslavpejic85/mirotalksfu/issues/251
+        // when `authRequired: true`. See: https://github.com/teamdekho/teamdekhosfu/issues/251
         const oidcStaticAssetRegex =
             /\.(ico|png|jpe?g|gif|svg|webp|css|js|mjs|map|woff2?|ttf|eot|otf|mp3|mp4|webm|wav|ogg|txt|xml|json|manifest)$/i;
         const skipStaticAssets = (mw) => (req, res, next) => {
@@ -1325,9 +1497,9 @@ function startServer() {
 
             log.debug('Direct Join', req.query);
 
-            // http://localhost:3010/join?room=test&name=mirotalksfu&audio=0&video=0&screen=0&notify=0&chat=1
-            // http://localhost:3010/join?room=test&roomPassword=0&name=mirotalksfu&audio=1&video=1&screen=0&hide=0&notify=1&duration=00:00:30
-            // http://localhost:3010/join?room=test&roomPassword=0&name=mirotalksfu&audio=1&video=1&screen=0&hide=0&notify=0&token=token
+            // http://localhost:3010/join?room=test&name=teamdekhosfu&audio=0&video=0&screen=0&notify=0&chat=1
+            // http://localhost:3010/join?room=test&roomPassword=0&name=teamdekhosfu&audio=1&video=1&screen=0&hide=0&notify=1&duration=00:00:30
+            // http://localhost:3010/join?room=test&roomPassword=0&name=teamdekhosfu&audio=1&video=1&screen=0&hide=0&notify=0&token=token
 
             const { room, roomPassword, name, audio, video, screen, hide, notify, chat, duration, token, isPresenter } =
                 checkXSS(req.query);
@@ -1419,7 +1591,7 @@ function startServer() {
     });
 
     // join room by id
-    app.get('/join/:roomId', async (req, res) => {
+    app.get('/join/:roomId', isHost, async (req, res) => {
         //
         const { roomId } = checkXSS(req.params);
 
@@ -1472,7 +1644,7 @@ function startServer() {
         res.sendFile(views.privacy);
     });
 
-    // mirotalk about
+    // teamdekho about
     app.get('/about', (req, res) => {
         res.sendFile(views.about);
     });
@@ -1977,7 +2149,10 @@ function startServer() {
     // REST API
     // ####################################################
 
-    app.get(restApi.basePath + '/stats', (req, res) => {
+    // TeamDekho: Auth status check API
+
+
+app.get(restApi.basePath + '/stats', (req, res) => {
         try {
             // Check if endpoint allowed
             if (restApi.allowed && !restApi.allowed.stats) {
@@ -2033,7 +2208,7 @@ function startServer() {
         const { host, authorization } = req.headers;
         const api = new ServerApi(host, authorization);
         if (!api.isAuthorized()) {
-            log.debug('MiroTalk get meetings - Unauthorized', {
+            log.debug('TeamDekho get meetings - Unauthorized', {
                 header: req.headers,
                 body: req.body,
             });
@@ -2424,10 +2599,10 @@ function startServer() {
         log.info('Server config', getServerConfig());
 
         // Warn if default secrets are still in use
-        if (config.api?.keySecret === 'mirotalksfu_default_secret') {
+        if (config.api?.keySecret === 'teamdekhosfu_default_secret') {
             log.warn('WARNING: API_KEY_SECRET is set to the default value. Change it before deploying!');
         }
-        if (jwtCfg.JWT_KEY === 'mirotalksfu_jwt_secret') {
+        if (jwtCfg.JWT_KEY === 'teamdekhosfu_jwt_secret') {
             log.warn('WARNING: JWT_SECRET is set to the default value. Change it before deploying!');
         }
     });
@@ -2587,6 +2762,70 @@ function startServer() {
             }
 
             const room = getRoom(socket);
+
+            // Task: Plan Limits Caching (Participant limit & Auto-end timer)
+            if (!room.planLimitsCache && !room.planLimitsCachePromise) {
+                room.planLimitsCachePromise = (async () => {
+                    try {
+                        const db = require('./db/connection');
+                        const [meetingRows] = await db.execute(
+                            'SELECT host_id FROM td_meetings WHERE room_slug = ? LIMIT 1',
+                            [socket.room_id]
+                        );
+
+                        let hostId = null;
+                        if (meetingRows.length > 0) {
+                            hostId = meetingRows[0].host_id;
+                        } else {
+                            const [hostRows] = await db.execute(
+                                'SELECT id FROM td_hosts WHERE personal_room_slug = ?',
+                                [socket.room_id]
+                            );
+                            if (hostRows.length > 0) {
+                                hostId = hostRows[0].id;
+                            }
+                        }
+
+                        if (hostId) {
+                            const [hostInfoRows] = await db.execute(
+                                'SELECT max_participants, max_duration_minutes FROM td_hosts WHERE id = ?',
+                                [hostId]
+                            );
+                            if (hostInfoRows.length > 0) {
+                                const cache = {
+                                    maxParticipants: hostInfoRows[0].max_participants || 50,
+                                    maxDurationMinutes: hostInfoRows[0].max_duration_minutes || 0,
+                                };
+                                room.planLimitsCache = cache;
+                                return cache;
+                            }
+                        }
+                    } catch (err) {
+                        log.error('[Join] - Plan limits fetch error', err.message);
+                    }
+                    // Default limits on error or no host found
+                    const defaultCache = { maxParticipants: 50, maxDurationMinutes: 0 };
+                    room.planLimitsCache = defaultCache;
+                    return defaultCache;
+                })();
+            }
+
+            // Await cache if necessary
+            if (room.planLimitsCachePromise) {
+                await room.planLimitsCachePromise;
+            }
+
+            // Participant limit check
+            if (room.getPeersCount() >= room.planLimitsCache.maxParticipants) {
+                log.warn('[Join] - Capacity exceeded', {
+                    roomId: socket.room_id,
+                    maxParticipants: room.planLimitsCache.maxParticipants,
+                    currentParticipants: room.getPeersCount(),
+                });
+                return cb({
+                    error: `Meeting is at full capacity for this plan (${room.planLimitsCache.maxParticipants} participants max). Ask the host to upgrade their plan.`
+                });
+            }
 
             const {
                 peer_name,
@@ -2781,6 +3020,24 @@ function startServer() {
 
             const firstJoin = room.getPeersCount() === 1;
             const guestJoin = room.getPeersCount() === 2;
+
+            // Task 2: Auto-end meeting
+            if (firstJoin && room.planLimitsCache.maxDurationMinutes > 0 && !room.durationTimerScheduled) {
+                room.durationTimerScheduled = true;
+                log.info('[Join] - Scheduling auto-end', { roomId: socket.room_id, duration: room.planLimitsCache.maxDurationMinutes });
+                room.durationTimer = setTimeout(() => {
+                    if (roomList.has(socket.room_id)) {
+                        const room = roomList.get(socket.room_id);
+                        room.broadCast(null, 'meeting-time-limit-reached', "This meeting has reached the maximum duration for the host's plan.");
+                        // Disconnect all sockets (assuming Room.js has an end method or we can iterate peers)
+                        if (typeof room.endRoom === 'function') {
+                            room.endRoom();
+                        } else {
+                            log.warn('[Auto-end] - room.endRoom not implemented');
+                        }
+                    }
+                }, room.planLimitsCache.maxDurationMinutes * 60 * 1000);
+            }
 
             // SCENARIO: Notify when the first user join room and is awaiting assistance (global email alert)
             if (firstJoin && !widget.alert.enabled) {
@@ -5013,6 +5270,10 @@ function startServer() {
                 //
                 stopRTMPActiveStreams(isPresenter, room);
 
+                if (room.durationTimer) {
+                    clearTimeout(room.durationTimer);
+                }
+
                 roomList.delete(socket.room_id);
 
                 delete presenters[socket.room_id];
@@ -5076,6 +5337,10 @@ function startServer() {
             if (room.getPeersCount() === 0) {
                 //
                 stopRTMPActiveStreams(isPresenter, room);
+
+                if (room.durationTimer) {
+                    clearTimeout(room.durationTimer);
+                }
 
                 roomList.delete(socket.room_id);
 
@@ -5743,6 +6008,10 @@ async function gracefulShutdown(signal) {
                 const peers = room.getPeers();
                 for (const [peerId] of peers) {
                     room.removePeer(peerId);
+                }
+
+                if (room.durationTimer) {
+                    clearTimeout(room.durationTimer);
                 }
 
                 roomList.delete(roomId);

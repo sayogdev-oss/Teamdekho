@@ -1,14 +1,14 @@
 'use strict';
 
 /**
- * MiroTalk SFU - Client component
+ * TeamDekho - Client component
  *
- * @link    GitHub: https://github.com/miroslavpejic85/mirotalksfu
- * @link    Official Live demo: https://sfu.mirotalk.com
+ * @link    GitHub: https://github.com/teamdekho/teamdekhosfu
+ * @link    Official Live demo: https://sfu.teamdekho.com
  * @license For open source use: AGPLv3
- * @license For commercial or closed source, contact us at license.mirotalk@gmail.com or purchase directly via CodeCanyon
- * @license CodeCanyon: https://codecanyon.net/item/mirotalk-sfu-webrtc-realtime-video-conferences/40769970
- * @author  Miroslav Pejic - miroslav.pejic.85@gmail.com
+ * @license For commercial or closed source, contact us at license.teamdekho@gmail.com or purchase directly via CodeCanyon
+ * @license CodeCanyon: https://codecanyon.net/item/teamdekho-sfu-webrtc-realtime-video-conferences/40769970
+ * @author  TeamDekho Team - support@teamdekho.in
  * @version 2.2.88
  *
  */
@@ -100,8 +100,8 @@ const icons = {
 };
 
 const image = {
-    about: '../images/mirotalk-logo.gif',
-    avatar: '../images/mirotalksfu-logo.png',
+    about: '../images/teamdekho-logo.gif',
+    avatar: '../images/teamdekhosfu-logo.png',
     audio: '../images/audio.gif',
     rec: '../images/rec.png',
     recording: '../images/recording.png',
@@ -8968,7 +8968,7 @@ class RoomClient {
             position: 'center',
             title,
             input: 'file',
-            html: renderRoomTemplate('popupMirotalkFilePickerTemplate', {
+            html: renderRoomTemplate('popupTeamDekhoFilePickerTemplate', {
                 text: {
                     emptyStateTitle,
                     emptyStateSubtitle,
@@ -8980,23 +8980,23 @@ class RoomClient {
                 'aria-label': title,
             },
             customClass: {
-                htmlContainer: 'mirotalk-file-picker-html',
+                htmlContainer: 'teamdekho-file-picker-html',
             },
             didOpen: () => {
                 const input = Swal.getInput();
                 const confirmButton = Swal.getConfirmButton();
-                const dropzone = document.getElementById('mirotalkFileDropzone');
-                const dropzoneTitle = document.getElementById('mirotalkFileDropzoneTitle');
-                const dropzoneSubtitle = document.getElementById('mirotalkFileDropzoneSubtitle');
-                const browseBtn = document.getElementById('mirotalkFileBrowseBtn');
-                const preview = document.getElementById('mirotalkFilePreview');
-                const fileName = document.getElementById('mirotalkFileName');
-                const fileDetails = document.getElementById('mirotalkFileDetails');
-                const removeBtn = document.getElementById('mirotalkFileRemoveBtn');
+                const dropzone = document.getElementById('teamdekhoFileDropzone');
+                const dropzoneTitle = document.getElementById('teamdekhoFileDropzoneTitle');
+                const dropzoneSubtitle = document.getElementById('teamdekhoFileDropzoneSubtitle');
+                const browseBtn = document.getElementById('teamdekhoFileBrowseBtn');
+                const preview = document.getElementById('teamdekhoFilePreview');
+                const fileName = document.getElementById('teamdekhoFileName');
+                const fileDetails = document.getElementById('teamdekhoFileDetails');
+                const removeBtn = document.getElementById('teamdekhoFileRemoveBtn');
 
                 if (!input || !dropzone || !confirmButton) return;
 
-                input.classList.add('mirotalk-hidden-file-input');
+                input.classList.add('teamdekho-hidden-file-input');
                 confirmButton.disabled = true;
 
                 const resetSelection = () => {
@@ -9117,7 +9117,7 @@ class RoomClient {
             },
             ...(imageUrl
                 ? {
-                      imageAlt: 'mirotalksfu-file-sharing',
+                      imageAlt: 'teamdekhosfu-file-sharing',
                       imageUrl,
                   }
                 : {}),
@@ -9374,7 +9374,7 @@ class RoomClient {
                     title: 'Received file',
                     text: this.incomingFileInfo.fileName + ' size ' + this.bytesToSize(this.incomingFileInfo.fileSize),
                     imageUrl: e.target.result,
-                    imageAlt: 'mirotalksfu-file-img-download',
+                    imageAlt: 'teamdekhosfu-file-img-download',
                     showDenyButton: true,
                     confirmButtonText: `Save`,
                     denyButtonText: `Cancel`,
