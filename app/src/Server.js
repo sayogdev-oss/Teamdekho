@@ -356,7 +356,7 @@ app.get('/api/host/me', isHost, (req, res) => {
     plan_id: user.plan_id || 1,
     personal_meeting_id: user.personal_meeting_id,
     personal_room_slug: user.personal_room_slug,
-    personal_meeting_link: `${process.env.SERVER_HOST_URL || 'https://localhost:3010'}/join/?room=${user.personal_room_slug}`,
+    personal_meeting_link: `${process.env.SERVER_HOST_URL || 'https://teamdekho.com'}/join/?room=${user.personal_room_slug}`,
     max_participants: user.max_participants || 50,
     max_duration_minutes: user.max_duration_minutes || 60,
     can_record: user.can_record || false,
