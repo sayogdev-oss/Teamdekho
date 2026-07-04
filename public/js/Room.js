@@ -92,6 +92,7 @@ const _PEER = {
 };
 
 const initUser = document.getElementById('initUser');
+const initVideoAudioRefreshButton = document.getElementById('initVideoAudioRefreshButton');
 const initVideoContainerClass = document.querySelector('.init-video-container');
 const bars = document.querySelectorAll('.volume-bar');
 
