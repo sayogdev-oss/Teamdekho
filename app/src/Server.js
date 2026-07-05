@@ -2788,7 +2788,7 @@ app.get(restApi.basePath + '/stats', (req, res) => {
 
                         if (hostId) {
                             const [hostInfoRows] = await db.execute(
-                                'SELECT max_participants, max_duration_minutes FROM td_hosts WHERE id = ?',
+                                'SELECT p.max_participants, p.max_duration_minutes FROM td_hosts h LEFT JOIN td_plans p ON h.plan_id = p.id WHERE h.id = ?',
                                 [hostId]
                             );
                             if (hostInfoRows.length > 0) {
