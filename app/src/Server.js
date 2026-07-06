@@ -300,7 +300,7 @@ app.get('/auth/google/callback',
         httpOnly: true,
         secure: isProd,
         maxAge: 30 * 24 * 60 * 60 * 1000,
-        sameSite: isProd ? 'strict' : 'lax'
+        sameSite: 'lax'
       });
       console.log('[TeamDekho Auth] Login successful:', user.email, '| Plan ID:', user.plan_id);
 
