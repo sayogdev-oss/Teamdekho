@@ -27,6 +27,7 @@ passport.use(new GoogleStrategy({
     const email = profile.emails[0].value;
     const name = profile.displayName;
     const avatar = profile.photos[0]?.value;
+    console.log("[DEBUG] Avatar URL length:", avatar?.length, "| URL:", avatar);
     const google_id = profile.id;
 
     // Check if host exists in td_hosts
