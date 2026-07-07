@@ -727,6 +727,8 @@ const io = socketIo(server, {
     maxHttpBufferSize: 1e7,
     transports: ['websocket'],
     cors: corsOptions,
+    pingInterval: 5000,
+    pingTimeout: 10000,
 });
 
 const host = config?.server?.hostUrl || `http://localhost:${config?.server?.listen?.port || 3010}`;
@@ -2923,6 +2925,11 @@ app.get(restApi.basePath + '/stats', (req, res) => {
             const existingPeer = room.getPeer(socket.id);
             if (existingPeer) {
                 room.removePeer(socket.id);
+            }
+            
+            // TEAMDEKHO: Remove stale peers that share the same UUID (e.g. from rapid reconnections)
+            if (data.peer_info?.peer_uuid) {
+                room.removeStalePeersByUuid(data.peer_info.peer_uuid, socket.id);
             }
 
             room.addPeer(new Peer(socket.id, data));

@@ -518,6 +518,34 @@ module.exports = class Room {
         }
     }
 
+    /**
+     * Removes stale peer entries that share the same peer_uuid but have a different socket_id.
+     * This is crucial for handling reconnections where a client might get a new socket.id
+     * but represents the same underlying user, preventing duplicate video tiles.
+     * @param {string} peer_uuid - The unique identifier of the peer to check for staleness.
+     * @param {string} excludeSocketId - The socket ID of the currently connecting peer, which should not be removed.
+     * @returns {void}
+     */
+    removeStalePeersByUuid(peer_uuid, excludeSocketId) {
+        if (!peer_uuid) {
+            log.warn('Attempted to remove stale peers with undefined peer_uuid');
+            return;
+        }
+        log.debug('Checking for stale peers by UUID', { peer_uuid, excludeSocketId });
+
+        const peersToRemove = [];
+        this.peers.forEach((peer, socket_id) => {
+            if (peer.peer_info?.peer_uuid === peer_uuid && socket_id !== excludeSocketId) {
+                peersToRemove.push(socket_id);
+            }
+        });
+
+        if (peersToRemove.length > 0) {
+            log.warn(`Removing ${peersToRemove.length} stale peers with UUID ${peer_uuid}: ${peersToRemove.join(", ")}`);
+            peersToRemove.forEach(staleSocketId => this.removePeer(staleSocketId));
+        }
+    }
+
     getPresenterPeers() {
         return Array.from(this.peers.values()).filter((peer) => peer.peer_presenter);
     }
