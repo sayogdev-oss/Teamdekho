@@ -11667,7 +11667,13 @@ class RoomClient {
         this.chatPeerAvatar = peer_avatar;
 
         const chatAbout = this.getId('chatAbout');
-        const participant = this.getId(peer_id);
+        let participant = this.getId(peer_id);
+        if (!participant) {
+            peer_id = 'all';
+            this.chatPeerId = peer_id;
+            this.chatPeerName = 'All';
+            participant = this.getId(peer_id);
+        }
         const participantsList = this.getId('participantsList');
         const chatPrivateMessages = this.getId('chatPrivateMessages');
         const messagePrivateListItems = chatPrivateMessages.getElementsByTagName('li');
@@ -11715,7 +11721,7 @@ class RoomClient {
         this.unreadMessageCounts[peer_id] = 0;
         this.updateUnreadCountBadge(peer_id);
 
-        participant.classList.add('active');
+        if (participant) participant.classList.add('active');
 
         isChatGPTOn = false;
         isDeepSeekOn = false;

@@ -12,6 +12,18 @@ async function addColumnIfNotExists(conn, table, column, definition) {
   }
 }
 
+async function modifyColumnIfNeeded(conn, table, column, targetType, definition) {
+  const [rows] = await conn.query(
+    `SELECT DATA_TYPE FROM information_schema.COLUMNS 
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?`,
+    [table, column]
+  );
+  if (rows.length > 0 && rows[0].DATA_TYPE.toLowerCase() !== targetType.toLowerCase()) {
+    await conn.query(`ALTER TABLE ${table} MODIFY COLUMN ${column} ${definition}`);
+    console.log(`[TeamDekho DB] Migrated: modified ${column} in ${table} to ${definition}`);
+  }
+}
+
 async function initializeDatabase() {
   const conn = await pool.getConnection();
   try {
@@ -71,7 +83,7 @@ async function initializeDatabase() {
         google_id VARCHAR(255) UNIQUE NOT NULL,
         email VARCHAR(255) UNIQUE NOT NULL,
         name VARCHAR(255) NOT NULL,
-        avatar VARCHAR(500),
+        avatar TEXT,
         plan_id INT DEFAULT 1,
         razorpay_customer_id VARCHAR(50) DEFAULT NULL,
         razorpay_subscription_id VARCHAR(50) DEFAULT NULL,
@@ -183,7 +195,7 @@ async function initializeDatabase() {
         google_id VARCHAR(255) DEFAULT NULL,
         display_name VARCHAR(255) NOT NULL,
         email VARCHAR(255) DEFAULT NULL,
-        avatar VARCHAR(500) DEFAULT NULL,
+        avatar TEXT DEFAULT NULL,
         joined_as ENUM('host','google','guest') DEFAULT 'guest',
         joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         left_at TIMESTAMP NULL,
@@ -426,6 +438,8 @@ async function initializeDatabase() {
     await addColumnIfNotExists(conn, 'td_hosts', 'razorpay_subscription_id', 'VARCHAR(50) DEFAULT NULL');
     await addColumnIfNotExists(conn, 'td_hosts', 'subscription_status', "VARCHAR(20) DEFAULT 'inactive'");
     await addColumnIfNotExists(conn, 'td_payments', 'gateway_subscription_id', 'VARCHAR(255) DEFAULT NULL');
+    await modifyColumnIfNeeded(conn, 'td_hosts', 'avatar', 'text', 'TEXT');
+    await modifyColumnIfNeeded(conn, 'td_participants', 'avatar', 'text', 'TEXT DEFAULT NULL');
 
     console.log('[TeamDekho DB] All 19 tables ready!');
   } catch (err) {

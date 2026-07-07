@@ -2956,7 +2956,7 @@ app.get(restApi.basePath + '/stats', (req, res) => {
              * first we check if the username match the presenters username else if join_first enabled
              * For breakout rooms, skip join_first rule - only presenters.list or token-based presenters are valid
              */
-            const isBreakoutRoom = socket.room_id.includes('_breakout_');
+            const isBreakoutRoom = socket.room_id?.includes('_breakout_') ?? false;
             if (
                 hostCfg?.presenters?.list?.includes(peer_name) ||
                 (!isBreakoutRoom &&
@@ -3825,7 +3825,7 @@ app.get(restApi.basePath + '/stats', (req, res) => {
             if (data.lobby_status === 'accept') {
                 for (const peer_id of pears_id) {
                     const peer = room.getPeer(peer_id);
-                    if (!peer.peer_lobby) continue;
+                    if (!peer || !peer.peer_lobby) continue;
 
                     peer.updatePeerInfo({ type: 'lobby', status: false });
 
