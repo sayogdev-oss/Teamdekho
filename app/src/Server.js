@@ -95,6 +95,7 @@ const fs = require('fs');
 const sanitizeFilename = require('sanitize-filename');
 const helmet = require('helmet');
 const config = require('./config');
+const { generateTurnCredentials } = config;
 const checkXSS = require('./XSS');
 const mime = require('mime-types');
 const Host = require('./Host');
@@ -3126,7 +3127,8 @@ app.get(restApi.basePath + '/stats', (req, res) => {
 
             try {
                 const createWebRtcTransport = await room.createWebRtcTransport(socket.id);
-                callback(createWebRtcTransport);
+                const turnCredentials = generateTurnCredentials();
+                callback({ ...createWebRtcTransport, iceServers: [turnCredentials] });
             } catch (err) {
                 log.warn('Create WebRTC Transport warning', { error: err.message, peerInfo });
                 callback({ error: err.message });

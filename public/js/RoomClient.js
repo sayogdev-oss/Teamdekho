@@ -1035,7 +1035,10 @@ class RoomClient {
             return;
         }
 
-        this.producerTransport = device.createSendTransport(producerTransportData);
+        this.producerTransport = device.createSendTransport({
+            ...producerTransportData,
+            iceServers: producerTransportData.iceServers || [],
+        });
         this.setupProducerTransportHandlers();
     }
 
@@ -1145,7 +1148,10 @@ class RoomClient {
             return;
         }
 
-        this.consumerTransport = device.createRecvTransport(consumerTransportData);
+        this.consumerTransport = device.createRecvTransport({
+            ...consumerTransportData,
+            iceServers: consumerTransportData.iceServers || [],
+        });
         this.setupConsumerTransportHandlers();
     }
 
