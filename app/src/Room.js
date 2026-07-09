@@ -518,6 +518,23 @@ module.exports = class Room {
         }
     }
 
+    endRoom() {
+        log.info("[Room] Ending room due to server-side issue", this.id);
+
+        this.sendToAll("serverShutdown", {
+            message: "This meeting has ended unexpectedly. Please rejoin.",
+        });
+
+        for (const socket_id of Array.from(this.peers.keys())) {
+            this.removePeer(socket_id);
+        }
+
+        if (this.router) {
+            this.router.close();
+            this.router = null;
+        }
+    }
+
     /**
      * Removes stale peer entries that share the same peer_uuid but have a different socket_id.
      * This is crucial for handling reconnections where a client might get a new socket.id

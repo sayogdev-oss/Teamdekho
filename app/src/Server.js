@@ -2625,61 +2625,63 @@ app.get(restApi.basePath + '/stats', (req, res) => {
 
     async function createWorkers() {
         const { numWorkers } = config.mediasoup;
-
-        const { logLevel, logTags, rtcMinPort, rtcMaxPort, disableLiburing } = config.mediasoup.worker;
-
         log.info('WORKERS:', numWorkers);
-
         for (let i = 0; i < numWorkers; i++) {
-            //
-            const worker = await mediasoup.createWorker({
-                logLevel: logLevel,
-                logTags: logTags,
-                rtcMinPort: Number(rtcMinPort),
-                rtcMaxPort: Number(rtcMaxPort),
-                disableLiburing: Boolean(disableLiburing),
-            });
+            await createSingleWorker(i);
+        }
+    }
 
-            if (webRtcServerActive) {
-                const webRtcServerOptions = clone(config.mediasoup.webRtcServerOptions);
-                const portIncrement = i;
+    async function createSingleWorker(index) {
+        const { logLevel, logTags, rtcMinPort, rtcMaxPort, disableLiburing } = config.mediasoup.worker;
+        const worker = await mediasoup.createWorker({
+            logLevel: logLevel,
+            logTags: logTags,
+            rtcMinPort: Number(rtcMinPort),
+            rtcMaxPort: Number(rtcMaxPort),
+            disableLiburing: Boolean(disableLiburing),
+        });
 
-                for (const listenInfo of webRtcServerOptions.listenInfos) {
-                    if (!listenInfo.portRange) {
-                        listenInfo.port += portIncrement;
-                    }
+        if (webRtcServerActive) {
+            const webRtcServerOptions = clone(config.mediasoup.webRtcServerOptions);
+            for (const listenInfo of webRtcServerOptions.listenInfos) {
+                if (!listenInfo.portRange) {
+                    listenInfo.port += index;
                 }
-
-                log.info('Create a WebRtcServer', {
-                    worker_pid: worker.pid,
-                    webRtcServerOptions: webRtcServerOptions,
-                });
-
-                const webRtcServer = await worker.createWebRtcServer(webRtcServerOptions);
-                worker.appData.webRtcServer = webRtcServer;
             }
+            log.info('Create a WebRtcServer', { worker_pid: worker.pid, webRtcServerOptions: webRtcServerOptions });
+            const webRtcServer = await worker.createWebRtcServer(webRtcServerOptions);
+            worker.appData.webRtcServer = webRtcServer;
+        }
 
-            worker.on('died', () => {
-                log.error('Mediasoup worker died, exiting in 5 seconds...', worker.pid);
-
-                nodemailer.sendEmailAlert('alert', {
-                    subject: 'Worker Died',
-                    body: `The Worker with PID ${worker.pid} has died unexpectedly!`,
-                });
-
-                setTimeout(() => process.exit(1), 5000);
+        worker.on('died', () => {
+            log.error('Mediasoup worker died, recovering...', worker.pid);
+            nodemailer.sendEmailAlert('alert', {
+                subject: 'Worker Died',
+                body: `Worker PID ${worker.pid} died. Replacing it and closing affected rooms — server stays up.`,
             });
+            handleWorkerDeath(worker, index);
+        });
 
-            workers.push(worker);
+        workers[index] = worker;
+        return worker;
+    }
 
-            /*
-            setInterval(async () => {
-                const usage = await worker.getResourceUsage();
-                log.debug('mediasoup Worker resource usage', { worker_pid: worker.pid, usage: usage });
-                const dump = await worker.dump();
-                log.debug('mediasoup Worker dump', { worker_pid: worker.pid, dump: dump });
-            }, 120000);
-            */
+    async function handleWorkerDeath(deadWorker, index) {
+        for (const [room_id, room] of roomList) {
+            if (room.worker === deadWorker) {
+                log.warn('[Worker Died] Closing room due to worker crash:', room_id);
+                if (typeof room.endRoom === 'function') {
+                    room.endRoom();
+                }
+                roomList.delete(room_id);
+            }
+        }
+
+        try {
+            await createSingleWorker(index);
+            log.info('[Worker Died] Replacement worker ready at index', index);
+        } catch (err) {
+            log.error('[Worker Died] Failed to create replacement worker:', err);
         }
     }
 
