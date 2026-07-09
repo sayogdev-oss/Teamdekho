@@ -933,6 +933,18 @@ module.exports = class Room {
         }
         consumer.appData.peerId = producerPeerId;
 
+        // Prioritize audio over video in mediasoup's bandwidth estimation,
+        // so weak-network congestion drops video quality before audio.
+        try {
+            if (kind === 'audio') {
+                await consumer.setPriority(255);
+            } else {
+                await consumer.setPriority(1);
+            }
+        } catch (error) {
+            log.warn('Failed to set consumer priority', { consumer_id: id, kind, error: error.message });
+        }
+
         consumer.once('producerclose', () => {
             log.debug('Consumer closed due to "producerclose" event', {
                 consumer_id: id,

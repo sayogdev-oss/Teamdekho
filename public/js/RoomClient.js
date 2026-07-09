@@ -2422,6 +2422,11 @@ class RoomClient {
                     opusFec: true,
                     opusNack: true,
                 };
+                // Ask the browser's internal bandwidth allocator to favor
+                // audio over video when network conditions are constrained.
+                params.encodings = [
+                    { networkPriority: 'high' },
+                ];
             }
 
             if (video) {
