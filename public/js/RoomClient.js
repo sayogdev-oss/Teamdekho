@@ -1331,6 +1331,7 @@ class RoomClient {
         this.socket.on('connect', this.handleSocketConnect);
         this.socket.on('connect_error', this.handleSocketConnectionError);
         this.socket.on('disconnect', this.handleSocketDisconnect);
+        this.socket.on('serverShutdown', this.handleServerShutdown);
         this.socket.on('consumerClosed', this.handleConsumerClosed);
         this.socket.on('setVideoOff', this.handleSetVideoOff);
         this.socket.on('removeMe', this.handleRemoveMe);
@@ -1423,6 +1424,22 @@ class RoomClient {
 
     handleSocketConnect = () => {
         console.log('SocketOn Connected to signaling server!');
+    };
+
+    handleServerShutdown = (data) => {
+        console.warn('SocketOn ServerShutdown:', data);
+        popupHtmlMessage(
+            null,
+            image.network,
+            'Connection Lost',
+            data?.message || 'Meeting connection was lost. Reconnecting...',
+            'center',
+            false,
+            false
+        );
+        setTimeout(() => {
+            window.location.reload();
+        }, 3000);
     };
 
     handleSocketDisconnect = (reason) => {
