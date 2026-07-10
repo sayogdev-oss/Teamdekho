@@ -86,6 +86,7 @@ module.exports = class Room {
 
         this.maxParticipants = config?.moderation?.room?.maxParticipants || 1000;
         this.globalLobby = config?.moderation?.room?.lobby || false;
+        this.activeAudioSpeakers = new Set(); // Store currently-forwarded non-host/co-host peerIds, max size 3
     }
 
     // ####################################################
@@ -282,29 +283,28 @@ module.exports = class Room {
             if (Date.now() > this.audioLastUpdateTime + 100) {
                 this.audioLastUpdateTime = Date.now();
 
-                const { producer, volume } = volumes[0];
-                const audioVolume = Math.round(Math.pow(10, volume / 70) * 10); // Scale volume to 1-10
+                const loudestEntry = volumes[0];
+                const loudestVolume = Math.round(Math.pow(10, loudestEntry.volume / 70) * 10);
 
-                if (audioVolume > 1) {
+                if (loudestVolume > 1) {
                     this.peers.forEach((peer) => {
                         const { id, peer_audio, peer_name } = peer;
                         peer.producers.forEach((peerProducer) => {
-                            if (peerProducer.id === producer.id && peerProducer.kind === 'audio' && peer_audio) {
+                            if (peerProducer.id === loudestEntry.producer.id && peerProducer.kind === 'audio' && peer_audio) {
                                 const data = {
                                     peer_id: id,
                                     peer_name: peer_name,
-                                    audioVolume: audioVolume,
+                                    audioVolume: loudestVolume,
                                 };
-                                // log.debug('Sending audio volume', data);
                                 this.sendToAll('audioVolume', data);
-                                return;
                             }
                         });
                     });
                 }
+
             }
         } catch (error) {
-            log.error('Error sending active speaker volume', error.message);
+            log.error('Error in sendActiveSpeakerVolume', error.message);
         }
     }
 
@@ -378,6 +378,58 @@ module.exports = class Room {
             this.activeSpeakerObserver.close();
             this.activeSpeakerObserver = null;
             log.debug('Active Speaker Observer closed');
+        }
+    }
+
+    /**
+     * @private
+     * Sets whether a specific peer's audio consumers should be forwarded.
+     * This is used for active-speaker-only audio forwarding, separate from video pagination.
+     * Host/co-host audio is never paused.
+     * @param {string} peerId - The ID of the peer whose audio consumers to manage.
+     * @param {boolean} shouldForward - True to resume audio consumers, false to pause them.
+     */
+    async setPeerAudioForwarding(peerId, shouldForward) {
+        try {
+            const targetPeer = this.peers.get(peerId);
+            if (!targetPeer) {
+                log.warn('setPeerAudioForwarding: Target peer with ID not found', { peerId });
+                return;
+            }
+
+            // Host/co-host audio must NEVER be paused, always stays forwarding
+            if (targetPeer.peer_presenter === true || targetPeer.peer_cohost === true) {
+                log.debug('setPeerAudioForwarding: Skipping host/co-host peer. Audio always forwarded.', { peerId });
+                return;
+            }
+
+            for (const peer of this.peers.values()) {
+                for (const consumer of peer.consumers.values()) {
+                    if (consumer.appData && consumer.appData.peerId === peerId && consumer.kind === 'audio') {
+                        if (shouldForward) {
+                            if (consumer.paused) {
+                                await consumer.resume();
+                                log.debug('setPeerAudioForwarding: Resumed audio consumer', {
+                                    consumerId: consumer.id,
+                                    receiver: peer.peer_name,
+                                    speaker: targetPeer.peer_name
+                                });
+                            }
+                        } else {
+                            if (!consumer.paused) {
+                                await consumer.pause();
+                                log.debug('setPeerAudioForwarding: Paused audio consumer', {
+                                    consumerId: consumer.id,
+                                    receiver: peer.peer_name,
+                                    speaker: targetPeer.peer_name
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (error) {
+            log.error('Error in setPeerAudioForwarding', { peerId, shouldForward, error: error.message });
         }
     }
 
@@ -960,6 +1012,8 @@ module.exports = class Room {
                 consumer_kind: kind,
             });
         });
+
+
 
         log.debug('Consumer created successfully', {
             consumer_transport_id,

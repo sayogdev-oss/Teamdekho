@@ -915,21 +915,22 @@ class RoomClient {
     getSortedPeers() {
         const peers = Array.from(this.peers.keys());
         
-        // Priority: 1. Host/Co-Host, 2. Manual Pin, 3. Active Speaker, 4. Others
+        // Priority: 1. Host/Co-Host, 2. Manual Pin, 3. Active Speaker, 4. Hand Raised, 5. Others
         return peers.sort((a, b) => {
             const peerA = this.peers.get(a);
             const peerB = this.peers.get(b);
             
             // Helper to check priority
-            const getPriority = (peer) => {
+            const getPriority = (peer, peerId) => {
                 let p = 0;
                 if (peer.peer_info.peer_presenter || peer.peer_info.peer_cohost) p += 100;
-                if (peer.id === this.pinnedVideoPlayerId) p += 50;
-                // Active speaker check - needs integration
+                if (peerId === this.pinnedVideoPlayerId) p += 50;
+                if (peerId === this.dominantSpeakerId) p += 25;
+                if (peer.peer_info.peer_hand) p += 10;
                 return p;
             };
 
-            return getPriority(peerB) - getPriority(peerA);
+            return getPriority(peerB, b) - getPriority(peerA, a);
         });
     }
 
@@ -1413,6 +1414,7 @@ class RoomClient {
         });
         this.socket.on('dominantSpeaker', ({ peerId }) => {
             console.log('Dominant speaker changed:', peerId);
+            this.dominantSpeakerId = peerId;
             this.updateGrid();
         });
 
