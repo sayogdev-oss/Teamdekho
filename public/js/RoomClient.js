@@ -450,7 +450,7 @@ class RoomClient {
         this.enableSharingLayers = true; // Enable simulcast or SVC for screen sharing
         this.numSimulcastStreamsWebcam = 3; // Number of streams for simulcast in webcam
         this.numSimulcastStreamsSharing = 1; // Number of streams for simulcast in screen sharing
-        this.webcamScalabilityMode = 'L3T3'; // Scalability Mode for webcam | 'L1T3' for VP8/H264 (in each simulcast encoding), 'L3T3_KEY' for VP9
+        this.webcamScalabilityMode = null; // Let getWebCamEncoding() choose the correct mode per-codec: 'L1T3' for VP8/H264, 'L3T3_KEY' for VP9
         this.sharingScalabilityMode = 'L1T3'; // Scalability Mode for screen sharing | 'L1T3' for VP8/H264 (in each simulcast encoding), 'L3T3' for VP9
 
         this.myVideoEl = null;
@@ -2958,6 +2958,26 @@ class RoomClient {
         let encodings;
         let codec;
 
+        // Tier-based dynamic scaling: adjust simulcast layer count and
+        // bitrate ceiling based on current room size, so small calls stay
+        // lightweight (less CPU/battery) and large rooms get full adaptive
+        // quality layers. Mirrors how production video-conferencing systems
+        // (e.g. Zoom) scale encoding config with room size.
+        const roomSize = (typeof participantsCount !== 'undefined' && participantsCount) || this.peers.size || 1;
+        let tierNumStreams;
+        let tierMaxBitrate;
+        if (roomSize <= 4) {
+            tierNumStreams = 1;
+            tierMaxBitrate = 1200000; // 1.2 Mbps - small call, full quality, low CPU load
+        } else if (roomSize <= 25) {
+            tierNumStreams = 2;
+            tierMaxBitrate = 800000; // 800 kbps top layer
+        } else {
+            tierNumStreams = 3;
+            tierMaxBitrate = 500000; // 500 kbps top layer - large room, prioritize scalability
+        }
+        console.log('WEBCAM ENCODING TIER', { roomSize, tierNumStreams, tierMaxBitrate });
+
         console.log('WEBCAM ENCODING', {
             forceVP8: this.forceVP8,
             forceVP9: this.forceVP9,
@@ -2998,7 +3018,7 @@ class RoomClient {
                 console.log('WEBCAM ENCODING: VP9 or AV1 with SVC');
                 encodings = [
                     {
-                        maxBitrate: 5000000,
+                        maxBitrate: tierMaxBitrate,
                         scalabilityMode: this.webcamScalabilityMode || 'L3T3_KEY',
                     },
                 ];
@@ -3007,21 +3027,21 @@ class RoomClient {
                 encodings = [
                     {
                         scaleResolutionDownBy: 1,
-                        maxBitrate: 5000000,
+                        maxBitrate: tierMaxBitrate,
                         scalabilityMode: this.webcamScalabilityMode || 'L1T3',
                     },
                 ];
-                if (this.numSimulcastStreamsWebcam > 1) {
+                if (tierNumStreams > 1) {
                     encodings.unshift({
                         scaleResolutionDownBy: 2,
-                        maxBitrate: 1000000,
+                        maxBitrate: Math.round(tierMaxBitrate * 0.4),
                         scalabilityMode: this.webcamScalabilityMode || 'L1T3',
                     });
                 }
-                if (this.numSimulcastStreamsWebcam > 2) {
+                if (tierNumStreams > 2) {
                     encodings.unshift({
                         scaleResolutionDownBy: 4,
-                        maxBitrate: 500000,
+                        maxBitrate: Math.round(tierMaxBitrate * 0.15),
                         scalabilityMode: this.webcamScalabilityMode || 'L1T3',
                     });
                 }
