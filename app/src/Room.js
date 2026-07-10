@@ -390,6 +390,7 @@ module.exports = class Room {
      * @param {boolean} shouldForward - True to resume audio consumers, false to pause them.
      */
     async setPeerAudioForwarding(peerId, shouldForward) {
+        // NOTE: This function is currently UNUSED and should NOT be activated or modified without review.
         try {
             const targetPeer = this.peers.get(peerId);
             if (!targetPeer) {

@@ -3531,12 +3531,12 @@ app.get(restApi.basePath + '/stats', (req, res) => {
             if (data.peerId) {
                 const { peerId } = data;
                 for (const consumer of peer.consumers.values()) {
-                    if (consumer.appData && consumer.appData.peerId === peerId && consumer.kind === 'video') {
+                    if (consumer.appData && consumer.appData.peerId === peerId) {
                         try {
                             await consumer.resume();
-                            log.debug('Consumer resumed via pagination', { peerId });
+                            log.debug('Consumer resumed via pagination', { peerId, kind: consumer.kind });
                         } catch (err) {
-                            log.warn('Failed to resume consumer via pagination', err);
+                            log.warn('Failed to resume consumer via pagination', { peerId, kind: consumer.kind, err });
                         }
                     }
                 }

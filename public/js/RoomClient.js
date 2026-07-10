@@ -952,7 +952,7 @@ class RoomClient {
     pauseConsumersForHiddenPeers(visiblePeerIds) {
         this.consumers.forEach((consumer, consumerId) => {
             const peerId = consumer.appData.peerId;
-            if (!visiblePeerIds.includes(peerId) && !consumer.paused) {
+            if (!visiblePeerIds.includes(peerId) && !consumer.paused && consumer.kind === 'video') {
                 console.log(`Pausing consumer ${consumerId} for peer ${peerId}`);
                 consumer.pause();
                 this.socket.emit('pauseConsumer', { peerId: peerId });
@@ -967,7 +967,7 @@ class RoomClient {
     resumeConsumersForVisiblePeers(visiblePeerIds) {
         this.consumers.forEach((consumer, consumerId) => {
             const peerId = consumer.appData.peerId;
-            if (visiblePeerIds.includes(peerId) && consumer.paused) {
+            if (consumer.kind === 'video' && visiblePeerIds.includes(peerId) && consumer.paused) {
                 this.resumeConsumer(consumerId);
             }
         });
