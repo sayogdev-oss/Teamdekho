@@ -7,10 +7,11 @@ const Logger = require('./Logger');
 const log = new Logger('HtmlInjector');
 
 class HtmlInjector {
-    constructor(filesPath, config) {
+    constructor(filesPath, config, version) {
         this.filesPath = filesPath; // Array of file paths to cache
         this.cache = {}; // Object to store cached files
         this.config = config; // Configuration containing metadata (OG, title, etc.)
+        this.version = version; // Store version for cache busting
         this.injectData = this.getInjectData(); // Initialize dynamic injection data
         this.watcher = null; // File watcher instance
         this.preloadPages(filesPath); // Preload pages at startup
@@ -87,10 +88,15 @@ class HtmlInjector {
 
         try {
             // Replace placeholders with dynamic data (OG, TITLE, etc.)
-            const modifiedHTML = this.cache[filePath].replace(
+            let modifiedHTML = this.cache[filePath].replace(
                 /{{(OG_[A-Z_]+)}}/g,
                 (_, key) => this.injectData[key] || ''
             );
+
+            // Cache busting for local assets
+            modifiedHTML = modifiedHTML.replace(/(src|href)=["']((\.\.\/|\/)(?:js|css)\/[^"']+)["']/g, (match, attr, path) => {
+                return `${attr}="${path}?v=${this.version}"`;
+            });
 
             if (!res.headersSent) {
                 res.send(modifiedHTML);

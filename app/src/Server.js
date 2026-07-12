@@ -229,6 +229,7 @@ setInterval(
 
 // Branding configuration
 const brandHtmlInjection = config?.ui?.brand?.htmlInjection ?? true;
+const APP_VERSION = Date.now();
 
 // Incoming Stream to RTPM
 const { v4: uuidv4 } = require('uuid');
@@ -921,7 +922,7 @@ const filesPath = [
     views.customizeRoom,
 ];
 
-const htmlInjector = new HtmlInjector(filesPath, config.ui.brand);
+const htmlInjector = new HtmlInjector(filesPath, config.ui.brand, APP_VERSION);
 
 const authHost = new Host(); // Authenticated IP by Login
 

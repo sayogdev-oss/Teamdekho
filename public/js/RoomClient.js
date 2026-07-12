@@ -2437,11 +2437,19 @@ class RoomClient {
                     encodings: encodings,
                     codecs: codec,
                 });
-                params.encodings = [
-                  { rid: 'r0', maxBitrate: 100000, scaleResolutionDownBy: 4, maxFramerate: 15 },
-                  { rid: 'r1', maxBitrate: 300000, scaleResolutionDownBy: 2, maxFramerate: 24 },
-                  { rid: 'r2', maxBitrate: 600000, scaleResolutionDownBy: 1, maxFramerate: 30 }
-                ];
+                // Adjust for mobile thermal/CPU load: single stream only
+                // NOTE: this.isMobileDevice is a blunt check; future refinement: combine with navigator.hardwareConcurrency
+                if (this.isMobileDevice) {
+                    params.encodings = [
+                        { rid: 'r0', maxBitrate: 400000, scaleResolutionDownBy: 1.5, maxFramerate: 24 }
+                    ];
+                } else {
+                    params.encodings = [
+                      { rid: 'r0', maxBitrate: 100000, scaleResolutionDownBy: 4, maxFramerate: 15 },
+                      { rid: 'r1', maxBitrate: 300000, scaleResolutionDownBy: 2, maxFramerate: 24 },
+                      { rid: 'r2', maxBitrate: 600000, scaleResolutionDownBy: 1, maxFramerate: 30 }
+                    ];
+                }
                 params.codecs = codec;
                 params.codecOptions = {
                   videoGoogleStartBitrate: 300
