@@ -339,11 +339,11 @@ app.get('/auth/google/callback',
 
 
 app.get('/host/login', (req, res) => {
-  res.sendFile(path.join(__dirname, '../../public/views/hostLogin.html'));
+  htmlInjector.injectHtml(views.login, res);
 });
 
 app.get('/host/dashboard', isHost, (req, res) => {
-  res.sendFile(path.join(__dirname, '../../public/views/freeDashboard.html'));
+  htmlInjector.injectHtml(views.freeDashboard, res);
 });
 
 app.get('/api/host/me', isHost, (req, res) => {
@@ -445,7 +445,7 @@ app.get('/api/meetings/info/:meetingId', async (req, res) => {
 });
 
 app.get('/j/:meetingId', (req, res) => {
-  res.sendFile(path.join(__dirname, '../../public/views/joinMeeting.html'));
+  htmlInjector.injectHtml(views.joinMeeting, res);
 });
 
 // TeamDekho: Public plans list for pricing page
@@ -707,15 +707,15 @@ app.post('/api/meetings/verify', async (req, res) => {
 });
 
 app.get('/meeting-ended', (req, res) => {
-  res.sendFile(path.join(__dirname, '../../public/views/meetingEnded.html'));
+  htmlInjector.injectHtml(views.meetingEnded, res);
 });
 
 app.get('/pricing', (req, res) => {
-  res.sendFile(path.join(__dirname, '../../public/views/pricing.html'));
+  htmlInjector.injectHtml(views.pricing, res);
 });
 
 app.get('/free/dashboard', (req, res) => {
-  res.sendFile(path.join(__dirname, '../../public/views/freeDashboard.html'));
+  htmlInjector.injectHtml(views.freeDashboard, res);
 });
 
 // TeamDekho: Auto-initialize database on startup
@@ -910,6 +910,10 @@ const views = {
     rtmpStreamer: path.join(__dirname, '../../', 'public/views/RtmpStreamer.html'),
     whoAreYou: path.join(__dirname, '../../', 'public/views/whoAreYou.html'),
     login: path.join(__dirname, '../../', 'public/views/hostLogin.html'),
+    joinMeeting: path.join(__dirname, '../../', 'public/views/joinMeeting.html'),
+    meetingEnded: path.join(__dirname, '../../', 'public/views/meetingEnded.html'),
+    pricing: path.join(__dirname, '../../', 'public/views/pricing.html'),
+    freeDashboard: path.join(__dirname, '../../', 'public/views/freeDashboard.html'),
 };
 
 const filesPath = [
@@ -920,6 +924,10 @@ const filesPath = [
     views.whoAreYou,
     views.activeRooms,
     views.customizeRoom,
+    views.joinMeeting,
+    views.meetingEnded,
+    views.pricing,
+    views.freeDashboard,
 ];
 
 const htmlInjector = new HtmlInjector(filesPath, config.ui.brand, APP_VERSION);
@@ -1332,7 +1340,7 @@ function startServer() {
         if (!rtmpCfg || !rtmpCfg.fromStream) {
             return res.json({ message: 'The RTMP Streamer is currently disabled.' });
         }
-        return res.sendFile(views.rtmpStreamer);
+        return htmlInjector.injectHtml(views.rtmpStreamer, res);
     });
 
     // set new room name and join
@@ -1640,17 +1648,17 @@ function startServer() {
 
     // if not allow video/audio
     app.get('/permission', (req, res) => {
-        res.sendFile(views.permission);
+        htmlInjector.injectHtml(views.permission, res);
     });
 
     // privacy policy
     app.get('/privacy', (req, res) => {
-        res.sendFile(views.privacy);
+        htmlInjector.injectHtml(views.privacy, res);
     });
 
     // teamdekho about
     app.get('/about', (req, res) => {
-        res.sendFile(views.about);
+        htmlInjector.injectHtml(views.about, res);
     });
 
     // Get stats endpoint
@@ -2421,7 +2429,7 @@ app.get(restApi.basePath + '/stats', (req, res) => {
 
     // not match any of page before, so 404 not found
     app.use((req, res) => {
-        res.sendFile(views.notFound);
+        htmlInjector.injectHtml(views.notFound, res);
     });
 
     // Global error handler for URIError and other errors

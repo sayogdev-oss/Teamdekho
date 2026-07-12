@@ -93,8 +93,8 @@ class HtmlInjector {
                 (_, key) => this.injectData[key] || ''
             );
 
-            // Cache busting for local assets
-            modifiedHTML = modifiedHTML.replace(/(src|href)=["']((\.\.\/|\/)(?:js|css)\/[^"']+)["']/g, (match, attr, path) => {
+            // Cache busting for local assets (supports relative path starting with . or / or direct directory paths like js/ css/ etc.)
+            modifiedHTML = modifiedHTML.replace(/(src|href)=["']((\.\.\/|\/|)(?:js|css)\/[^"']+)["']/g, (match, attr, path) => {
                 return `${attr}="${path}?v=${this.version}"`;
             });
 
