@@ -611,8 +611,29 @@ module.exports = class Room {
         });
 
         if (peersToRemove.length > 0) {
-            log.warn(`Removing ${peersToRemove.length} stale peers with UUID ${peer_uuid}: ${peersToRemove.join(", ")}`);
-            peersToRemove.forEach(staleSocketId => this.removePeer(staleSocketId));
+            log.warn(`Found ${peersToRemove.length} stale peers with UUID ${peer_uuid}, initiating cleanup`, {
+                peer_uuid,
+                staleSocketIds: peersToRemove,
+            });
+
+            peersToRemove.forEach((staleSocketId) => {
+                try {
+                    const staleSocket = this.io.sockets.sockets.get(staleSocketId);
+                    if (staleSocket && staleSocket.connected) {
+                        staleSocket.emit('duplicateSessionDetected', {
+                            reason: 'joined_elsewhere',
+                            roomId: this.id,
+                            timestamp: Date.now(),
+                        });
+                        log.warn('Stale peer notified of duplicate session', { peer_uuid, staleSocketId });
+                    } else {
+                        log.warn('Stale peer skipped notification (already disconnected)', { peer_uuid, staleSocketId });
+                    }
+                    this.removePeer(staleSocketId);
+                } catch (error) {
+                    log.error('Failed to clean up stale peer', { peer_uuid, staleSocketId, error: error.message });
+                }
+            });
         }
     }
 

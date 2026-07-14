@@ -347,6 +347,7 @@ class RoomClient {
         this.isMySettingsOpen = false;
 
         this._isConnected = false;
+        this._duplicateSessionActive = false;
         this.isVideoBarDropDownOpen = false;
         this.isDocumentOnFullScreen = false;
         this.isVideoOnFullScreen = false;
@@ -365,6 +366,12 @@ class RoomClient {
         this._privatePersistTimer = null;
         this.isBreakoutPinned = false;
         this.isSpeechSynthesisSupported = isSpeechSynthesisSupported;
+        /** @type {Array<{newMsg: boolean, from: string, msg: string}>} */
+        this._ttsQueue = [];
+        /** @type {boolean} */
+        this._isSpeaking = false;
+        /** @type {number} */
+        this.TTS_QUEUE_MAX_LENGTH = 3; // Max 3 pending messages in queue
         this.isParticipantsOpen = false;
         this.speechInMessages = false;
         this.showChatOnMessage = true;
@@ -1336,6 +1343,7 @@ class RoomClient {
         this.socket.on('consumerClosed', this.handleConsumerClosed);
         this.socket.on('setVideoOff', this.handleSetVideoOff);
         this.socket.on('removeMe', this.handleRemoveMe);
+        this.socket.on('duplicateSessionDetected', this.handleDuplicateSessionDetected);
         this.socket.on('refreshParticipantsCount', this.handleRefreshParticipantsCount);
         this.socket.on('newProducers', this.handleNewProducers);
         this.socket.on('newDataProducer', this.handleNewDataProducer);
@@ -1453,12 +1461,112 @@ class RoomClient {
         console.log(`SocketOn Disconnect Error: ${err.message}`);
     };
 
+    handleDuplicateSessionDetected = (data) => {
+        if (this._duplicateSessionActive) {
+            console.warn('Duplicate session detection already active, ignoring redundant event.');
+            return;
+        }
+        this._duplicateSessionActive = true;
+
+        console.warn('Duplicate session detected. Initiating cleanup...', data);
+
+        // 2. Stop local media tracks
+        try {
+            if (this.localVideoStream) {
+                this.localVideoStream.getTracks().forEach(track => track.stop());
+                this.localVideoStream = null;
+                console.log('Stopped local video stream tracks.');
+            }
+        } catch (error) {
+            console.error('Error stopping local video stream tracks:', error.message);
+        }
+
+        try {
+            if (this.localAudioStream) {
+                this.localAudioStream.getTracks().forEach(track => track.stop());
+                this.localAudioStream = null;
+                console.log('Stopped local audio stream tracks.');
+            }
+        } catch (error) {
+            console.error('Error stopping local audio stream tracks:', error.message);
+        }
+
+        try {
+            if (this.localScreenStream) {
+                this.localScreenStream.getTracks().forEach(track => track.stop());
+                this.localScreenStream = null;
+                console.log('Stopped local screen stream tracks.');
+            }
+        } catch (error) {
+            console.error('Error stopping local screen stream tracks:', error.message);
+        }
+
+        // 3. Close local producers
+        try {
+            if (this.videoProducerId) {
+                this.closeProducer(mediaType.video, 'duplicateSessionDetected');
+            }
+        } catch (error) {
+            console.error('Error closing video producer:', error.message);
+        }
+
+        try {
+            if (this.audioProducerId) {
+                this.closeProducer(mediaType.audio, 'duplicateSessionDetected');
+            }
+        } catch (error) {
+            console.error('Error closing audio producer:', error.message);
+        }
+
+        try {
+            if (this.screenProducerId) {
+                this.closeProducer(mediaType.screen, 'duplicateSessionDetected');
+            }
+        } catch (error) {
+            console.error('Error closing screen producer:', error.message);
+        }
+
+        // 4. Call this.exit(true)
+        try {
+            this.exit(true);
+            console.log('Called exit(true) to clean up transports and socket listeners.');
+        } catch (error) {
+            console.error('Error calling exit(true):', error.message);
+        }
+
+        // 5. User notification & 6. Redirect / lock the UI
+        try {
+            popupHtmlMessage(
+                null,
+                image.network,
+                'Session Ended',
+                'You were disconnected because this room was opened in another tab or device.',
+                'center',
+                false,
+                false
+            );
+            console.log('Displayed duplicate session notification.');
+        } catch (error) {
+            console.error('Error displaying notification:', error.message);
+        }
+        try {
+            setTimeout(() => {
+                window.location.reload();
+            }, 3000);
+            console.log('Initiated page reload after notification.');
+        } catch (error) {
+            console.error('Error initiating reload:', error.message);
+        }
+    };
+
     handleSocketReconnectAttempt = (attempt) => {
+        if (this._duplicateSessionActive) return;
         console.log(`SocketOn Reconnect Attempt: ${attempt}`);
         this.handleReconnectAttempt(attempt);
     };
 
     handleSocketReconnect = () => {
+        if (this._duplicateSessionActive) return;
         console.log('SocketOn Reconnected to signaling server!');
         this.handleReconnect();
     };
@@ -1497,6 +1605,7 @@ class RoomClient {
         if (isBroadcastingEnabled && data.isPresenter) {
             this.userLog('info', `${icons.broadcaster} ${data.peer_name} disconnected`, 'top-end', 6000);
         }
+        this.updateGrid();
     };
 
     handleRefreshParticipantsCount = (data) => {
@@ -1547,6 +1656,7 @@ class RoomClient {
             }
 
             this.applyPendingFollowMe();
+            this.updateGrid();
         }
     };
 
@@ -2222,6 +2332,7 @@ class RoomClient {
         const audioProducerExist = this.producerExist(mediaType.audio);
         if (this.isAudioAllowed) {
             if (!audioProducerExist) {
+                if (this._duplicateSessionActive) return;
                 await this.produce(mediaType.audio, microphoneSelect.value);
                 console.log('09 ----> START AUDIO MEDIA');
             }
@@ -2231,6 +2342,7 @@ class RoomClient {
             }
         } else {
             if (isEnumerateAudioDevices && !audioProducerExist) {
+                if (this._duplicateSessionActive) return;
                 await this.produce(mediaType.audio, microphoneSelect.value);
                 console.log('09 ----> START AUDIO MEDIA');
                 await this.sleep(300);
@@ -2241,6 +2353,7 @@ class RoomClient {
         }
 
         if (this.isVideoAllowed && !this._moderator.video_start_hidden) {
+            if (this._duplicateSessionActive) return;
             await this.produce(mediaType.video, videoSelect.value);
             console.log('10 ----> START VIDEO MEDIA');
         } else {
@@ -2265,6 +2378,7 @@ class RoomClient {
         }
 
         if (this.joinRoomWithScreen && !this._moderator.screen_cant_share) {
+            if (this._duplicateSessionActive) return;
             await this.produce(mediaType.screen, null, false, true);
             console.log('11 ----> START SCREEN MEDIA');
         }
@@ -3249,6 +3363,7 @@ class RoomClient {
         this.closeProducer(type, 'closeThenProduce');
         setTimeout(async function () {
             try {
+                if (rc._duplicateSessionActive) return;
                 await rc.produce(type, deviceId, swapCamera);
             } catch (err) {
                 console.error('closeThenProduce error, restoring previous camera', err);
@@ -4223,6 +4338,7 @@ class RoomClient {
             }
 
             handleAspectRatio();
+            this.updateGrid();
             console.log(
                 '[removeConsumer - ' + consumer_kind + '] Video-element-count',
                 this.videoMediaContainer.childElementCount
@@ -4462,6 +4578,7 @@ class RoomClient {
             if (this.producerTransport) this.producerTransport.close();
             if (this.socket) {
                 this.socket.off('disconnect');
+                this.socket.off('duplicateSessionDetected');
                 this.socket.off('newProducers');
                 this.socket.off('consumerClosed');
                 this.socket.off('connect');
@@ -7235,22 +7352,95 @@ class RoomClient {
         });
     }
 
+    /**
+     * Queues an incoming chat message for TTS or speaks it immediately if queue is empty.
+     * Enforces a maximum queue size to prevent unbounded lag.
+     * @param {boolean} newMsg - Whether the message is a new incoming chat message.
+     * @param {string} from - The name of the sender.
+     * @param {string} msg - The message content.
+     */
     speechMessage(newMsg = true, from, msg) {
+        if (this._ttsQueue.length >= this.TTS_QUEUE_MAX_LENGTH) {
+            console.warn('[speechMessage] TTS queue full, dropping message from', from);
+            return;
+        }
+
+        this._ttsQueue.push({ newMsg, from, msg });
+        console.log('[speechMessage] Queued message. Queue length:', this._ttsQueue.length);
+
+        if (!this._isSpeaking) {
+            this._processTtsQueue();
+        }
+    }
+
+    /**
+     * Internal method to process the TTS queue sequentially.
+     * @private
+     */
+    _processTtsQueue() {
+        if (this._ttsQueue.length === 0) {
+            this._isSpeaking = false;
+            return;
+        }
+
+        this._isSpeaking = true;
+        const { newMsg, from, msg } = this._ttsQueue.shift();
+        console.log('[speechMessage] Speaking message from', from, '. Queue remaining:', this._ttsQueue.length);
+
         const speech = new SpeechSynthesisUtterance();
         speech.text = (newMsg ? 'New' : '') + ' message from:' + from + '. The message is:' + msg;
         speech.rate = 0.9;
+
+        speech.onend = () => {
+            console.log('[speechMessage] Finished speaking message from', from);
+            this._processTtsQueue(); // Process next in queue
+        };
+
+        speech.onerror = (event) => {
+            console.error('[speechMessage] Speech error:', event);
+            this._processTtsQueue(); // Process next even on error
+        };
+
         window.speechSynthesis.speak(speech);
     }
 
+    /**
+     * Initiates speech synthesis for the text content of a specified HTML element.
+     * Cancels any ongoing speech before starting a new one.
+     * @param {string} elemId - The ID of the HTML element whose text content will be spoken.
+     */
     speechElementText(elemId) {
         const element = this.getId(elemId);
+        if (!element) {
+            console.warn(`[speechElementText] Element with ID ${elemId} not found.`);
+            return;
+        }
+        window.speechSynthesis.cancel(); // Cancel any ongoing speech
         this.speechText(element.innerText);
     }
 
+    /**
+     * Initiates speech synthesis for a given text message.
+     * If VideoAI is active, it delegates to `streamingTask`.
+     * Otherwise, it cancels any ongoing speech and starts a new one.
+     * @param {string} msg - The message to be spoken.
+     */
+    /**
+     * Initiates speech synthesis for a given text message.
+     * If VideoAI is active, it delegates to `streamingTask`.
+     * Otherwise, it cancels any ongoing speech and starts a new one.
+     * Clears the automatic queue state to prevent race conditions.
+     * @param {string} msg - The message to be spoken.
+     */
     speechText(msg) {
         if (VideoAI.active) {
             this.streamingTask(msg);
         } else {
+            // Prevent the race condition: clear the auto queue state first
+            this._ttsQueue = [];
+            this._isSpeaking = false;
+            
+            window.speechSynthesis.cancel(); // Cancel any ongoing speech
             const speech = new SpeechSynthesisUtterance();
             speech.text = msg;
             speech.rate = 0.9;
@@ -11392,15 +11582,18 @@ class RoomClient {
             if (result.isConfirmed) {
                 switch (type) {
                     case mediaType.audio:
+                        if (this._duplicateSessionActive) return;
                         this.producerExist(mediaType.audio)
                             ? await this.resumeProducer(mediaType.audio)
                             : await this.produce(mediaType.audio, microphoneSelect.value);
                         this.updatePeerInfo(this.peer_name, this.peer_id, 'audio', true);
                         break;
                     case mediaType.video:
+                        if (this._duplicateSessionActive) return;
                         await this.produce(mediaType.video, videoSelect.value);
                         break;
                     case mediaType.screen:
+                        if (this._duplicateSessionActive) return;
                         await this.produce(mediaType.screen);
                         break;
                     default:
