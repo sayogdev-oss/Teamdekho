@@ -23,7 +23,8 @@ function renderGridForPage(allPeerIds) {
     // Show/Hide video elements based on visibility
     const cameras = document.getElementsByClassName('Camera');
     for (let camera of cameras) {
-        const peerId = camera.id.replace('video-', '');
+        if (camera.id === '__shareVideo' || camera.id === 'videoAIContainer') continue;
+        const peerId = camera.id.replace('__videoOff', '').replace('__video', '');
         camera.style.display = visiblePeerIds.includes(peerId) ? 'block' : 'none';
     }
 
