@@ -4028,6 +4028,7 @@ class RoomClient {
             rtpParameters,
             codecOptions,
             streamId,
+            appData: { peerId: peer_id, mediaType: type },
         });
 
         const stream = new MediaStream();
