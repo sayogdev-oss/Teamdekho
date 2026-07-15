@@ -3007,7 +3007,7 @@ app.get(restApi.basePath + '/stats', (req, res) => {
                 return cb('isLocked');
             }
 
-            if ((room.isLobbyEnabled() || room.isGlobalLobbyEnabled()) && !isPresenter) {
+            if (room.isLobbyEnabled() && !isPresenter) {
                 log.debug(
                     'The user is currently waiting to join the room because the lobby is enabled, and they are not a presenter'
                 );

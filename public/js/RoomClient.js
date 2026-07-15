@@ -695,6 +695,7 @@ class RoomClient {
             this.getId('isUserPresenter').innerText = isPresenter;
             window.localStorage.isReconnected = false;
 
+            /*
             // GLOBAL LOBBY ENABLED
             if (room?.globalLobby) {
                 if (isPresenter) {
@@ -705,6 +706,7 @@ class RoomClient {
                 rc.roomAction('globalLobbyOn', true, false);
                 console.warn('7.1-WARNING ----> GLOBAL Room Lobby detected');
             }
+            */
 
             handleRules(isPresenter);
 
