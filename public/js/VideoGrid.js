@@ -24,7 +24,8 @@ function renderGridForPage(allPeerIds) {
     const cameras = document.getElementsByClassName('Camera');
     for (let camera of cameras) {
         if (camera.id === '__shareVideo' || camera.id === 'videoAIContainer') continue;
-        const peerId = camera.id.replace('__videoOff', '').replace('__video', '');
+        const peerId = camera.dataset.peerId;
+        if (!peerId) continue; // safety: skip tiles without a peer id set
         camera.style.display = visiblePeerIds.includes(peerId) ? 'block' : 'none';
     }
 

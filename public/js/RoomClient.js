@@ -3392,6 +3392,7 @@ class RoomClient {
                 d = document.createElement('div');
                 d.className = 'Camera';
                 d.id = id + '__video';
+                d.dataset.peerId = this.peer_id;
 
                 elem = document.createElement('video');
                 elem.setAttribute('id', id);
@@ -4063,6 +4064,7 @@ class RoomClient {
                 d = document.createElement('div');
                 d.className = 'Camera';
                 d.id = id + '__video';
+                d.dataset.peerId = remotePeerId;
 
                 elem = document.createElement('video');
                 elem.setAttribute('id', id);
@@ -4382,6 +4384,7 @@ class RoomClient {
         d = document.createElement('div');
         d.className = 'Camera';
         d.id = peer_id + '__videoOff';
+        d.dataset.peerId = peer_id;
 
         vb = document.createElement('div');
         vb.id = peer_id + '__vb';
