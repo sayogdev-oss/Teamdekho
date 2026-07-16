@@ -3091,6 +3091,8 @@ app.get(restApi.basePath + '/stats', (req, res) => {
                 notifyMainRoomBreakoutCountChanged(socket.room_id);
             }
 
+            room.broadCast(socket.id, 'newPeer', peer);
+
             cb(room.toJson());
         });
 

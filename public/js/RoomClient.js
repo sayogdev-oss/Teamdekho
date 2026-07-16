@@ -1347,6 +1347,7 @@ class RoomClient {
         this.socket.on('removeMe', this.handleRemoveMe);
         this.socket.on('duplicateSessionDetected', this.handleDuplicateSessionDetected);
         this.socket.on('refreshParticipantsCount', this.handleRefreshParticipantsCount);
+        this.socket.on('newPeer', this.handleNewPeer);
         this.socket.on('newProducers', this.handleNewProducers);
         this.socket.on('newDataProducer', this.handleNewDataProducer);
         this.socket.on('dataConsumerClosed', this.handleDataConsumerClosed);
@@ -1607,6 +1608,18 @@ class RoomClient {
         if (isBroadcastingEnabled && data.isPresenter) {
             this.userLog('info', `${icons.broadcaster} ${data.peer_name} disconnected`, 'top-end', 6000);
         }
+        this.updateGrid();
+    };
+
+    handleNewPeer = (peer) => {
+        console.log('SocketOn New peer:', peer);
+        this.peers.set(peer.id, peer);
+        participantsCount = this.peers.size;
+
+        if (!isBroadcastingEnabled) adaptAspectRatio(participantsCount);
+        if (isParticipantsListOpen) getRoomParticipants();
+        if (isBreakoutPanelOpen) refreshBreakoutPanel();
+
         this.updateGrid();
     };
 
