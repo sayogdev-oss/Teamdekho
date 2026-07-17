@@ -1525,6 +1525,21 @@ function startServer() {
                 return res.redirect('/');
             }
 
+            // LOAD TEST BYPASS — only active if LOAD_TEST_SECRET env var is set
+            // and matches the query param. Safe by default: if env var is unset,
+            // this block does nothing and normal auth flow continues.
+            if (
+                process.env.LOAD_TEST_SECRET &&
+                req.query.loadTestKey === process.env.LOAD_TEST_SECRET
+            ) {
+                log.warn('LOAD TEST bypass used - skipping auth', {
+                    room,
+                    ip: getIP(req),
+                    name,
+                });
+                return htmlInjector.injectHtml(views.room, res);
+            }
+
             let peerUsername = '';
             let peerPassword = '';
             let isPeerValid = false;
