@@ -1618,7 +1618,19 @@ function startServer() {
     });
 
     // join room by id
-    app.get('/join/:roomId', isHost, async (req, res) => {
+    app.get('/join/:roomId', (req, res, next) => {
+        if (
+            process.env.LOAD_TEST_SECRET &&
+            req.query.loadTestKey === process.env.LOAD_TEST_SECRET
+        ) {
+            log.warn('LOAD TEST bypass used on /join/:roomId', {
+                roomId: req.params.roomId,
+                ip: getIP(req),
+            });
+            return next();
+        }
+        return isHost(req, res, next);
+    }, async (req, res) => {
         //
         const { roomId } = checkXSS(req.params);
 
