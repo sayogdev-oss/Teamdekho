@@ -155,6 +155,8 @@ const image = {
     },
 };
 
+window.image = image;
+
 const mediaType = {
     audio: 'audioType',
     audioTab: 'audioTab',
