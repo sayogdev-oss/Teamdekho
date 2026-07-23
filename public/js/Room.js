@@ -241,6 +241,7 @@ const exitLeaveAllBtn = getId('exitLeaveAllBtn');
 // ####################################################
 
 const virtualBackgrounds = Object.values(image.virtualBackground);
+window.virtualBackgrounds = virtualBackgrounds;
 
 const virtualBackground = new VirtualBackground();
 
