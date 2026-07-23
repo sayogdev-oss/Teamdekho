@@ -1919,6 +1919,7 @@ async function roomIsReady() {
     ) {
                 await rc.loadFeatureScript("../js/RoomVirtualBackground.js");
         rc.showVideoImageSelector();
+        show(videoVirtualBackground);
     }
     handleButtons();
     handleSelects();
