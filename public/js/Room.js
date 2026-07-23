@@ -1773,7 +1773,7 @@ function joinRoom(peer_name, room_id) {
     }
 }
 
-function roomIsReady() {
+async function roomIsReady() {
     startRoomSession();
 
     makeRoomPopupQR();
@@ -1917,6 +1917,7 @@ function roomIsReady() {
         isMediaStreamTrackAndTransformerSupported &&
         (BUTTONS.settings.virtualBackground !== undefined ? BUTTONS.settings.virtualBackground : true)
     ) {
+                await rc.loadFeatureScript("../js/RoomVirtualBackground.js");
         rc.showVideoImageSelector();
     }
     handleButtons();
