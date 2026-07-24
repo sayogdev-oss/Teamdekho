@@ -1918,9 +1918,17 @@ async function roomIsReady() {
         isMediaStreamTrackAndTransformerSupported &&
         (BUTTONS.settings.virtualBackground !== undefined ? BUTTONS.settings.virtualBackground : true)
     ) {
-                await rc.loadFeatureScript("../js/RoomVirtualBackground.js");
-        rc.showVideoImageSelector();
-        show(videoVirtualBackground);
+        try {
+            console.log('[VB DEBUG] Starting loadFeatureScript...');
+            await rc.loadFeatureScript("../js/RoomVirtualBackground.js");
+            console.log('[VB DEBUG] Script loaded. typeof rc.showVideoImageSelector:', typeof rc.showVideoImageSelector);
+            rc.showVideoImageSelector();
+            console.log('[VB DEBUG] showVideoImageSelector call completed. imageGridVideo innerHTML length:', document.getElementById('imageGridVideo')?.innerHTML?.length);
+            show(videoVirtualBackground);
+            console.log('[VB DEBUG] show(videoVirtualBackground) completed.');
+        } catch (err) {
+            console.error('[VB DEBUG] ERROR in virtual background flow:', err);
+        }
     }
     handleButtons();
     handleSelects();
