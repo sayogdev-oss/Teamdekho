@@ -8,12 +8,12 @@ RoomClient.prototype.showVideoImageSelector = function () {
     const imageGrid = document.getElementById('imageGrid');
     const imageGridVideo = document.getElementById('imageGridVideo');
 
-    if (!imageGrid || !imageGridVideo) return;
+    if (!imageGridVideo) return;
 
     elemDisplay('imageGridVideo', true, 'grid');
     if (imageGridVideo.innerHTML != '') return;
 
-    imageGrid.innerHTML = ''; // Clear previous init images
+    if (imageGrid) imageGrid.innerHTML = ''; // Clear previous init images
     imageGridVideo.innerHTML = ''; // Clear previous images
 
     function createImage(id, src, tooltip, index, clickHandler) {
