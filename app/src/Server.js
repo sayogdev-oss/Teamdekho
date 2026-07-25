@@ -3608,6 +3608,38 @@ app.get(restApi.basePath + '/stats', (req, res) => {
             }
         });
 
+        socket.on('adjustConsumerQuality', async ({ consumerId, direction }) => {
+            if (!roomExists(socket)) return;
+            const peer = getPeer(socket);
+            if (!peer) return;
+            const consumer = peer.getConsumer(consumerId);
+            if (!consumer) return;
+            if (!['simulcast', 'svc'].includes(consumer.type)) return;
+
+            try {
+                const { scalabilityMode } = consumer.rtpParameters.encodings[0];
+                const maxSpatialLayers = parseInt(scalabilityMode.substring(1, 2)) || 1;
+                const currentPreferred = consumer.preferredLayers ? consumer.preferredLayers.spatialLayer : (maxSpatialLayers - 1);
+                
+                let targetSpatial = currentPreferred;
+                if (direction === 'downgrade') {
+                    targetSpatial = 0;
+                } else if (direction === 'upgrade') {
+                    targetSpatial = Math.min(currentPreferred + 1, maxSpatialLayers - 1);
+                }
+
+                if (targetSpatial !== currentPreferred) {
+                    await consumer.setPreferredLayers({
+                        spatialLayer: targetSpatial,
+                        temporalLayer: 2
+                    });
+                    log.debug('Adjusted consumer quality layer', { consumerId, direction, targetSpatial, maxSpatialLayers });
+                }
+            } catch (err) {
+                log.warn('Failed to adjust consumer quality', { consumerId, direction, error: err.message });
+            }
+        });
+
         socket.on('pauseConsumer', async ({ peerId }) => {
             if (!roomExists(socket)) return;
             const peer = getPeer(socket);

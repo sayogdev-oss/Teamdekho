@@ -4135,6 +4135,9 @@ class RoomClient {
 
         this.consumerQualityHistory.set(consumerId, history);
         console.log('QUALITY DECISION', consumerId, decision, scoreVal);
+        if (decision !== 'none') {
+            this.socket.emit('adjustConsumerQuality', { consumerId, direction: decision });
+        }
         return decision;
     }
 
