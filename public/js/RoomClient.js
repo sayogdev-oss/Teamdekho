@@ -2579,19 +2579,7 @@ class RoomClient {
                     encodings: encodings,
                     codecs: codec,
                 });
-                // Adjust for mobile thermal/CPU load: single stream only
-                // NOTE: this.isMobileDevice is a blunt check; future refinement: combine with navigator.hardwareConcurrency
-                if (this.isMobileDevice) {
-                    params.encodings = [
-                        { rid: 'r0', maxBitrate: 400000, scaleResolutionDownBy: 1.5, maxFramerate: 24 }
-                    ];
-                } else {
-                    params.encodings = [
-                      { rid: 'r0', maxBitrate: 100000, scaleResolutionDownBy: 4, maxFramerate: 15 },
-                      { rid: 'r1', maxBitrate: 300000, scaleResolutionDownBy: 2, maxFramerate: 24 },
-                      { rid: 'r2', maxBitrate: 600000, scaleResolutionDownBy: 1, maxFramerate: 30 }
-                    ];
-                }
+                params.encodings = encodings;
                 params.codecs = codec;
                 params.codecOptions = {
                   videoGoogleStartBitrate: 300
@@ -2945,8 +2933,20 @@ class RoomClient {
             const firstVideoCodec = this.device.rtpCapabilities.codecs.find((c) => c.kind === 'video');
             console.log('WEBCAM ENCODING: first codec available', { firstVideoCodec: firstVideoCodec });
 
-            // If VP9 is the only available video codec then use SVC.
-            if (
+            if (this.isMobileDevice) {
+                // Mobile: single-layer stream to protect CPU/thermal, but still 
+                // room-size aware (bitrate/framerate scale down for larger rooms, 
+                // matching desktop tier logic direction)
+                console.log('WEBCAM ENCODING: Mobile single-stream (thermal-safe)');
+                encodings = [
+                    {
+                        scaleResolutionDownBy: roomSize <= 4 ? 1.5 : roomSize <= 25 ? 2 : 2.5,
+                        maxBitrate: roomSize <= 4 ? 400000 : roomSize <= 25 ? 300000 : 200000,
+                        maxFramerate: roomSize <= 4 ? 24 : 20,
+                        scalabilityMode: this.webcamScalabilityMode || 'L1T3',
+                    },
+                ];
+            } else if (
                 ((this.forceVP9 || this.forceAV1) && codec) ||
                 (firstVideoCodec?.mimeType &&
                     ['video/vp9', 'video/av1'].includes(firstVideoCodec.mimeType.toLowerCase()))
@@ -3871,10 +3871,35 @@ class RoomClient {
             case mediaType.screen:
                 this.removeVideoOff(remotePeerId);
 
+                const existingTile = this.videoMediaContainer.querySelector(
+                    `[data-peer-id="${remotePeerId}"][data-media-type="${type}"]`
+                );
+                if (existingTile) {
+                    const oldVideoEl = existingTile.querySelector('video');
+                    if (oldVideoEl) {
+                        try {
+                            const oldStream = oldVideoEl.srcObject;
+                            if (oldStream) {
+                                oldStream.getTracks().forEach((track) => track.stop());
+                            }
+                            oldVideoEl.srcObject = null;
+                        } catch (err) {
+                            console.warn('[handleConsumer] Error stopping stale track', err);
+                        }
+                    }
+                    try {
+                        existingTile.parentNode.removeChild(existingTile);
+                        console.log('[handleConsumer] Removed stale duplicate tile for', remotePeerId, type);
+                    } catch (err) {
+                        console.warn('[handleConsumer] Error removing stale tile', err);
+                    }
+                }
+
                 d = document.createElement('div');
                 d.className = 'Camera';
                 d.id = id + '__video';
                 d.dataset.peerId = remotePeerId;
+                d.dataset.mediaType = remoteIsScreen ? 'screen' : 'video';
 
                 elem = document.createElement('video');
                 elem.setAttribute('id', id);
