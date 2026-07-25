@@ -1,5 +1,7 @@
 'use strict';
 
+const SEGMENTATION_INPUT_SIZE = 256; // Smaller resolution for MediaPipe input
+
 class VirtualBackground {
     static instance = null;
 
@@ -37,8 +39,11 @@ class VirtualBackground {
         this.gifAnimation = null;
         this.gifCanvas = null;
         this.frameCounter = 0;
-        this.frameSkipRatio = 3;
+        // Calculate adaptive frameSkipRatio based on device capability
+        this.frameSkipRatio = this._determineFrameSkipRatio();
         this.lastSegmentationMask = null;
+        this.scalingCanvas = null; // New line for reusable canvas
+        this.scalingCtx = null;    // New line for reusable context
     }
 
     async initializeSegmentation() {
@@ -129,13 +134,48 @@ class VirtualBackground {
         }
     }
 
-    closeFrames(videoFrame, imageBitmap) {
+    /**
+     * @private
+     * @param {VideoFrame} videoFrame - The video frame to close.
+     * @param {ImageBitmap} imageBitmap - The image bitmap to close.
+     * @param {ImageBitmap} [scaledImageBitmap=null] - The scaled image bitmap to close (optional).
+     * @description Closes video frames and image bitmaps to release resources.
+     */
+    closeFrames(videoFrame, imageBitmap, scaledImageBitmap = null) {
         if (videoFrame && !videoFrame.closed) {
             videoFrame.close();
         }
         if (imageBitmap && !imageBitmap.closed) {
             imageBitmap.close();
         }
+        if (scaledImageBitmap && !scaledImageBitmap.closed) {
+            scaledImageBitmap.close();
+        }
+    }
+
+    /**
+     * @private
+     * @returns {number} The determined frame skip ratio based on device capabilities.
+     * @description Dynamically sets the frameSkipRatio to adapt performance based on CPU cores and device memory.
+     */
+    _determineFrameSkipRatio() {
+        const cores = navigator.hardwareConcurrency || 4; // Default to 4 cores
+        const deviceMemory = navigator.deviceMemory || 2; // Default to 2 GB RAM
+
+        let skipRatio = 2; // Default for mid-range
+
+        if (cores >= 8 && deviceMemory >= 8) {
+            skipRatio = 1; // High-end device: process every frame
+            console.log('Detected high-end device (cores:', cores, 'memory:', deviceMemory, 'GB). Setting frameSkipRatio to', skipRatio);
+        } else if (cores >= 4 && deviceMemory >= 4) {
+            skipRatio = 2; // Mid-range device: skip every other frame
+            console.log('Detected mid-range device (cores:', cores, 'memory:', deviceMemory, 'GB). Setting frameSkipRatio to', skipRatio);
+        } else {
+            skipRatio = 3; // Low-end device: skip two out of three frames
+            console.warn('Detected low-end device (cores:', cores, 'memory:', deviceMemory, 'GB). Setting frameSkipRatio to', skipRatio);
+        }
+
+        return skipRatio;
     }
 
     async processStreamWithSegmentation(videoTrack, maskHandler) {
@@ -158,6 +198,10 @@ class VirtualBackground {
 
         const transformer = new TransformStream({
             transform: async (videoFrame, controller) => {
+                // Recommendation: Removed TASK 3 throttle completely as per feedback.
+                // Task 1 (downscaling with reusable canvas) and Task 2 (adaptive skip ratio) 
+                // provide sufficient CPU reduction without risking visual background flashes.
+
                 if (!this.segmentation || !this.initialized) {
                     console.warn('⚠️ Segmentation is not initialized, skipping frame.');
                     this.closeFrames(videoFrame);
@@ -165,9 +209,10 @@ class VirtualBackground {
                 }
 
                 let imageBitmap = null;
+                let scaledImageBitmap = null;
 
                 try {
-                    // Create image bitmap from video frame
+                    // Create image bitmap from video frame (full resolution)
                     imageBitmap = await createImageBitmap(videoFrame);
 
                     if (!imageBitmap) {
@@ -176,19 +221,44 @@ class VirtualBackground {
                         return;
                     }
 
+                    // TASK 1: Downscale for segmentation model input using reusable OffscreenCanvas
+                    if (!this.scalingCanvas) {
+                        this.scalingCanvas = new OffscreenCanvas(SEGMENTATION_INPUT_SIZE, SEGMENTATION_INPUT_SIZE);
+                        this.scalingCtx = this.scalingCanvas.getContext('2d');
+                    }
+
+                    const aspectRatio = imageBitmap.width / imageBitmap.height;
+                    let currentScaledWidth = SEGMENTATION_INPUT_SIZE;
+                    let currentScaledHeight = SEGMENTATION_INPUT_SIZE;
+
+                    if (imageBitmap.width > imageBitmap.height) {
+                        currentScaledHeight = SEGMENTATION_INPUT_SIZE / aspectRatio;
+                    } else {
+                        currentScaledWidth = SEGMENTATION_INPUT_SIZE * aspectRatio;
+                    }
+
+                    if (this.scalingCanvas.width !== currentScaledWidth || this.scalingCanvas.height !== currentScaledHeight) {
+                        this.scalingCanvas.width = currentScaledWidth;
+                        this.scalingCanvas.height = currentScaledHeight;
+                    }
+
+                    this.scalingCtx.clearRect(0, 0, currentScaledWidth, currentScaledHeight);
+                    this.scalingCtx.drawImage(imageBitmap, 0, 0, currentScaledWidth, currentScaledHeight);
+                    scaledImageBitmap = await createImageBitmap(this.scalingCanvas);
+
                     if (this.frameCounter % this.frameSkipRatio === 0) {
-                        // Process only every 3rd frame (reduce CPU load)
+                        // Process only every Nth frame (adaptive CPU load reduction)
                         this.pendingFrames.push({
                             videoFrame,
                             controller,
-                            imageBitmap,
+                            imageBitmap, // Original full-res image for rendering
                             maskHandler,
                         });
 
-                        // Send the image to the segmentation model
-                        await this.segmentation.send({ image: imageBitmap });
+                        // Send the SCALED image to the segmentation model
+                        await this.segmentation.send({ image: scaledImageBitmap });
                     } else if (this.lastSegmentationMask) {
-                        // Use last segmentation mask for skipped frames
+                        // Use last segmentation mask for skipped frames with original imageBitmap
                         this.processFrame(videoFrame, controller, imageBitmap, maskHandler, this.lastSegmentationMask);
                     } else {
                         // If no previous mask, just enqueue the original frame
@@ -198,7 +268,11 @@ class VirtualBackground {
                     this.frameCounter++; // Increment frame counter
                 } catch (error) {
                     console.error('❌ Frame transformation error:', error);
-                    this.closeFrames(videoFrame, imageBitmap);
+                    this.closeFrames(videoFrame, imageBitmap, scaledImageBitmap);
+                } finally {
+                    if (scaledImageBitmap && !scaledImageBitmap.closed) {
+                        scaledImageBitmap.close();
+                    }
                 }
             },
             flush: () => {

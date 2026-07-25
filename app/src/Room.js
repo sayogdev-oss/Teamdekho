@@ -971,6 +971,12 @@ module.exports = class Room {
         let peerConsumer;
         try {
             peerConsumer = await peer.createConsumer(consumer_transport_id, producerId, rtpCapabilities);
+
+            if (peerConsumer && peerConsumer.consumer) {
+                peerConsumer.consumer.on('score', (score) => {
+                    this.send(socket_id, 'consumerScore', { consumerId: peerConsumer.consumer.id, score });
+                });
+            }
         } catch (error) {
             log.error(`Error creating consumer for peer ${peer_name} with socket ID ${socket_id}`, {
                 consumer_transport_id,

@@ -481,6 +481,7 @@ class RoomClient {
         this.producers = new Map();
         this.producerLabel = new Map();
         this.eventListeners = new Map();
+        this.consumerQualityHistory = new Map();
 
         this.debug = false;
         this.debug ? window.localStorage.setItem('debug', 'mediasoup*') : window.localStorage.removeItem('debug');
@@ -1389,6 +1390,16 @@ class RoomClient {
         this.socket.on('breakoutRoomHelp', this.handleBreakoutRoomHelp);
         this.socket.on('followMe', this.handleFollowMeData);
         this.socket.on('chatReaction', this.handleChatReaction);
+        this.socket.on('consumerScore', ({ consumerId, score }) => {
+            if (!score) return;
+            if (!this.lastLoggedScores) this.lastLoggedScores = new Map();
+            const lastScore = this.lastLoggedScores.get(consumerId);
+            if (!lastScore || JSON.stringify(lastScore) !== JSON.stringify(score)) {
+                this.lastLoggedScores.set(consumerId, score);
+                console.log('Consumer score update', consumerId, score);
+            }
+            this.evaluateConsumerQuality(consumerId, score);
+        });
         this.socket.on('coHostUpdate', ({ peerId, isCoHost: newCoHostStatus }) => {
             // Update remote peer's stored info (used by badges on video tiles and participant list)
             const peerData = this.peers && this.peers.get(peerId);
@@ -4089,8 +4100,49 @@ class RoomClient {
         return elem;
     }
 
+    evaluateConsumerQuality(consumerId, score) {
+        if (!this.consumerQualityHistory) {
+            this.consumerQualityHistory = new Map();
+        }
+
+        const history = this.consumerQualityHistory.get(consumerId) || {
+            lowScoreCount: 0,
+            highScoreCount: 0,
+            lastDecision: 'none',
+        };
+
+        const scoreVal = typeof score === 'object' && score !== null ? (score.score ?? 10) : score;
+        let decision = 'none';
+
+        if (scoreVal <= 3) {
+            history.lowScoreCount++;
+            history.highScoreCount = 0;
+            if (history.lowScoreCount >= 2 && history.lastDecision !== 'downgrade') {
+                decision = 'downgrade';
+                history.lastDecision = 'downgrade';
+            }
+        } else if (scoreVal >= 7) {
+            history.highScoreCount++;
+            history.lowScoreCount = 0;
+            if (history.highScoreCount >= 3 && history.lastDecision === 'downgrade') {
+                decision = 'upgrade';
+                history.lastDecision = 'upgrade';
+            }
+        } else {
+            history.lowScoreCount = 0;
+            history.highScoreCount = 0;
+        }
+
+        this.consumerQualityHistory.set(consumerId, history);
+        console.log('QUALITY DECISION', consumerId, decision, scoreVal);
+        return decision;
+    }
+
     removeConsumer(consumer_id, consumer_kind) {
         this.pendingResumes.delete(consumer_id);
+        if (this.consumerQualityHistory) {
+            this.consumerQualityHistory.delete(consumer_id);
+        }
         if (!this.consumers.get(consumer_id)) return;
 
         console.log('Remove consumer', { consumer_id: consumer_id, consumer_kind: consumer_kind });

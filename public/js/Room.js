@@ -1919,15 +1919,11 @@ async function roomIsReady() {
         (BUTTONS.settings.virtualBackground !== undefined ? BUTTONS.settings.virtualBackground : true)
     ) {
         try {
-            console.log('[VB DEBUG] Starting loadFeatureScript...');
             await rc.loadFeatureScript("../js/RoomVirtualBackground.js");
-            console.log('[VB DEBUG] Script loaded. typeof rc.showVideoImageSelector:', typeof rc.showVideoImageSelector);
             rc.showVideoImageSelector();
-            console.log('[VB DEBUG] showVideoImageSelector call completed. imageGridVideo innerHTML length:', document.getElementById('imageGridVideo')?.innerHTML?.length);
             show(videoVirtualBackground);
-            console.log('[VB DEBUG] show(videoVirtualBackground) completed.');
         } catch (err) {
-            console.error('[VB DEBUG] ERROR in virtual background flow:', err);
+            console.error('Error loading virtual background:', err);
         }
     }
     handleButtons();
