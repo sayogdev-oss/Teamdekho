@@ -469,6 +469,7 @@ class RoomClient {
         // Noise Suppression
         this.RNNoiseProcessor = null;
         this.isRNNoiseSupported = true; // Will be set to false if AudioWorklet/WASM not available
+        this.rnnoiseManager = new RNNoiseManager(this);
 
         this.videoProducerId = null;
         this.screenProducerId = null;
@@ -2511,8 +2512,8 @@ class RoomClient {
                  * This will only apply to audio tracks
                  * and will not affect video tracks.
                  */
-                await this.initRNNoiseSuppression();
-                stream = await this.getRNNoiseSuppressionStream(stream);
+                await this.rnnoiseManager.initRNNoiseSuppression();
+                stream = await this.rnnoiseManager.getRNNoiseSuppressionStream(stream);
             }
 
             console.log('Supported Constraints', navigator.mediaDevices.getSupportedConstraints());
@@ -2692,84 +2693,7 @@ class RoomClient {
 
 
 
-    // ####################################################
-    // NOISE SUPPRESSION
-    // ####################################################
 
-    async initRNNoiseSuppression() {
-        if (typeof RNNoiseProcessor === 'undefined') {
-            console.warn('RNNoiseProcessor is not available.');
-            this.handleRNNoiseNotSupported();
-            return;
-        }
-
-        if (!RNNoiseProcessor.isSupported()) {
-            console.warn('RNNoise: AudioWorklet or WebAssembly not supported on this device, skipping.');
-            this.handleRNNoiseNotSupported();
-            return;
-        }
-
-        const supports48k = await RNNoiseProcessor.isSampleRateSupported();
-        if (!supports48k) {
-            console.warn('RNNoise: device does not support 48 kHz sample rate, skipping.');
-            this.handleRNNoiseNotSupported();
-            return;
-        }
-
-        this.disableRNNoiseSuppression();
-
-        this.RNNoiseProcessor = new RNNoiseProcessor();
-    }
-
-    handleRNNoiseNotSupported() {
-        this.isRNNoiseSupported = false;
-
-        // Uncheck the toggle so localStorage stays consistent
-        if (switchNoiseSuppression) switchNoiseSuppression.checked = false;
-        localStorageSettings.mic_noise_suppression = false;
-        lS.setSettings(localStorageSettings);
-
-        // Hide the custom noise suppression toggle in audio settings
-        elemDisplay('noiseSuppressionButton', false);
-    }
-
-    async getRNNoiseSuppressionStream(stream) {
-        if (!this.RNNoiseProcessor) {
-            console.warn('RNNoiseProcessor not initialized.');
-            //
-            return stream;
-        }
-
-        try {
-            const processedStream = await this.RNNoiseProcessor.startProcessing(stream);
-
-            if (localStorageSettings.mic_noise_suppression) {
-                this.RNNoiseProcessor.toggleNoiseSuppression();
-                switchNoiseSuppression.checked = this.RNNoiseProcessor.noiseSuppressionEnabled;
-            }
-
-            if (typeof labelNoiseSuppression !== 'undefined') {
-                labelNoiseSuppression.style.color = this.RNNoiseProcessor.noiseSuppressionEnabled ? 'lime' : 'white';
-            }
-
-            return processedStream;
-        } catch (err) {
-            console.warn('RNNoiseProcessor failed, using original stream:', err);
-            return stream;
-        }
-    }
-
-    disableRNNoiseSuppression() {
-        if (this.RNNoiseProcessor) {
-            try {
-                this.RNNoiseProcessor.stopProcessing();
-            } catch (err) {
-                // ignore
-            }
-            this.RNNoiseProcessor = null;
-            console.warn('RNNoiseProcessor already initialized, stopping previous instance.');
-        }
-    }
 
     // ####################################################
     // AUDIO/VIDEO/SCREEN CONSTRAINTS
@@ -4455,7 +4379,7 @@ class RoomClient {
         if (VideoAI.active) this.stopSession();
         if (this.rtmpFilestreamer) this.stopRTMP();
         if (this.rtmpUrlstreamer) this.stopRTMPfromURL();
-        if (this.RNNoiseProcessor) this.disableRNNoiseSuppression();
+        if (this.rnnoiseManager && this.rnnoiseManager.RNNoiseProcessor) this.rnnoiseManager.disableRNNoiseSuppression();
 
         const clean = () => {
             this._isConnected = false;
