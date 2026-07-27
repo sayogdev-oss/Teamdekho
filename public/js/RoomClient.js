@@ -384,12 +384,7 @@ class RoomClient {
         this.isChatMaximized = false;
         this.isToggleUnreadMsg = false;
         this.isToggleRaiseHand = false;
-        this.roomEmojiBurstState = {
-            startedAt: 0,
-            anchorX: 0,
-            anchorY: 0,
-            count: 0,
-        };
+
         this.pinnedVideoPlayerId = null;
         this.camVideo = false;
         this.videoQualitySelectedIndex = 0;
@@ -470,6 +465,7 @@ class RoomClient {
         this.RNNoiseProcessor = null;
         this.isRNNoiseSupported = true; // Will be set to false if AudioWorklet/WASM not available
         this.rnnoiseManager = new RNNoiseManager(this);
+        this.reactionManager = new ReactionManager(this);
 
         this.videoProducerId = null;
         this.screenProducerId = null;
@@ -1390,7 +1386,7 @@ class RoomClient {
         this.socket.on('breakoutRoomCountdown', this.handleBreakoutRoomCountdown);
         this.socket.on('breakoutRoomHelp', this.handleBreakoutRoomHelp);
         this.socket.on('followMe', this.handleFollowMeData);
-        this.socket.on('chatReaction', this.handleChatReaction);
+        this.socket.on('chatReaction', (data) => this.reactionManager.handleChatReaction(data));
         this.socket.on('consumerScore', ({ consumerId, score }) => {
             if (!score) return;
             if (!this.lastLoggedScores) this.lastLoggedScores = new Map();
@@ -13729,5 +13725,33 @@ class RoomClient {
 
     sleep(ms) {
         return new Promise((resolve) => setTimeout(resolve, ms));
+    }
+
+    toggleReactionPicker(msgListId) {
+        return this.reactionManager.toggleReactionPicker(msgListId);
+    }
+
+    sendChatReaction(msgListId, emoji) {
+        return this.reactionManager.sendChatReaction(msgListId, emoji);
+    }
+
+    applyReactionToElement(msgEl, emoji, peerName, action = 'add') {
+        return this.reactionManager.applyReactionToElement(msgEl, emoji, peerName, action);
+    }
+
+    handleChatReaction = (dataObject) => {
+        return this.reactionManager.handleChatReaction(dataObject);
+    };
+
+    getRoomEmojiPlacement() {
+        return this.reactionManager.getRoomEmojiPlacement();
+    }
+
+    handleRoomEmoji(cmd, duration = 5000) {
+        return this.reactionManager.handleRoomEmoji(cmd, duration);
+    }
+
+    handleEmojiSound(cmd) {
+        return this.reactionManager.handleEmojiSound(cmd);
     }
 } // End
