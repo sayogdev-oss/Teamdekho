@@ -388,7 +388,6 @@ class RoomClient {
         this.videoQualitySelectedIndex = 0;
 
         this.chatGPTContext = [];
-        this.chatGPTContext = [];
         this.deepSeekContext = [];
         this.chatGPTEnabled = false;
         this.chatMessages = [];
