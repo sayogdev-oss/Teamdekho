@@ -465,6 +465,7 @@ class RoomClient {
         this.reactionManager = new ReactionManager(this);
         this.followMeManager = new FollowMeManager(this);
         this.pollManager = new PollManager(this);
+        this.editorManager = new EditorManager(this);
 
         this.videoProducerId = null;
         this.screenProducerId = null;
@@ -1827,15 +1828,15 @@ class RoomClient {
     };
 
     handleEditorChange = (data) => {
-        this.handleEditorData(data);
+        return this.editorManager.handleEditorData(data);
     };
 
     handleEditorActions = (data) => {
-        this.handleEditorActionsData(data);
+        return this.editorManager.handleEditorActionsData(data);
     };
 
     handleEditorUpdate = (data) => {
-        this.handleEditorUpdateData(data);
+        return this.editorManager.handleEditorUpdateData(data);
     };
 
     handleBreakoutRoom = (data) => {
@@ -7606,406 +7607,122 @@ class RoomClient {
     // ####################################################
 
     toggleEditor() {
-        editorRoom.classList.toggle('show');
-        if (!this.isEditorOpen) {
-            this.editorCenter();
-            this.sound('open');
-        }
-        this.isEditorOpen = !this.isEditorOpen;
-
-        if (this.isEditorPinned) this.editorUnpin();
-
-        if (!this.isMobileDevice && this.isEditorOpen && this.canBePinned()) {
-            this.toggleEditorPin();
-        }
+        return this.editorManager.toggleEditor();
     }
 
     toggleLockUnlockEditor() {
-        this.isEditorLocked = !this.isEditorLocked;
-
-        const btnToShow = this.isEditorLocked ? editorLockBtn : editorUnlockBtn;
-        const btnToHide = this.isEditorLocked ? editorUnlockBtn : editorLockBtn;
-        const btnColor = this.isEditorLocked ? 'red' : 'white';
-        const action = this.isEditorLocked ? 'lock' : 'unlock';
-
-        show(btnToShow);
-        hide(btnToHide);
-        setColor(editorLockBtn, btnColor);
-
-        this.editorSendAction(action);
-
-        if (this.isEditorLocked) {
-            userLog('info', 'The Editor is locked. \n The participants cannot interact with it.', 'top-right');
-            sound('locked');
-        }
+        return this.editorManager.toggleLockUnlockEditor();
     }
 
     editorCenter() {
-        editorRoom.style.position = 'fixed';
-        editorRoom.style.transform = 'translate(-50%, -50%)';
-        editorRoom.style.top = '50%';
-        editorRoom.style.left = '50%';
+        return this.editorManager.editorCenter();
     }
 
     toggleEditorPin() {
-        if (transcription.isPin()) {
-            return userLog('info', 'Please unpin the transcription that appears to be currently pinned', 'top-end');
-        }
-        if (this.isPollPinned) {
-            return userLog('info', 'Please unpin the poll that appears to be currently pinned', 'top-end');
-        }
-        if (this.isChatPinned) {
-            return userLog('info', 'Please unpin the chat that appears to be currently pinned', 'top-end');
-        }
-        if (this.isBreakoutPinned) {
-            return userLog('info', 'Please unpin the breakout rooms that appears to be currently pinned', 'top-end');
-        }
-        this.isEditorPinned ? this.editorUnpin() : this.editorPin();
-        this.sound('click');
+        return this.editorManager.toggleEditorPin();
     }
 
     editorPin() {
-        if (!this.isVideoPinned) {
-            this.videoMediaContainer.style.top = 0;
-            this.videoMediaContainer.style.width = '70%';
-            this.videoMediaContainer.style.height = '100%';
-        }
-        this.editorPinned();
-        this.isEditorPinned = true;
-        setColor(editorTogglePin, 'lime');
-        this.resizeVideoMenuBar();
-        resizeVideoMedia();
-        document.documentElement.style.setProperty('--editor-height', '80vh');
-        //if (!this.isMobileDevice) this.makeUnDraggable(editorRoom, editorHeader);
+        return this.editorManager.editorPin();
     }
 
     editorUnpin() {
-        if (!this.isVideoPinned) {
-            this.videoMediaContainerUnpin();
-        }
-        editorRoom.style.maxWidth = '100%';
-        editorRoom.style.maxHeight = '100%';
-        this.pollCenter();
-        this.isEditorPinned = false;
-        editorRoom.classList.remove('panel-slide-in');
-        setColor(editorTogglePin, 'white');
-        this.resizeVideoMenuBar();
-        resizeVideoMedia();
-        document.documentElement.style.setProperty('--editor-height', '85vh');
-        //if (!this.isMobileDevice) this.makeDraggable(editorRoom, editorHeader);
+        return this.editorManager.editorUnpin();
     }
 
     editorPinned() {
-        editorRoom.style.position = 'absolute';
-        editorRoom.style.top = 0;
-        editorRoom.style.right = 0;
-        editorRoom.style.left = null;
-        editorRoom.style.transform = null;
-        editorRoom.style.maxWidth = '30%';
-        editorRoom.style.maxHeight = '100%';
-        editorRoom.classList.remove('panel-slide-in');
-        void editorRoom.offsetWidth;
-        editorRoom.classList.add('panel-slide-in');
+        return this.editorManager.editorPinned();
     }
 
     editorUpdate() {
-        if (this.isEditorPrivate) return;
-        if (this.isEditorOpen && (!isRulesActive || isPresenter)) {
-            console.log('IsPresenter: update editor content to the participants in the room');
-            const content = quill.getContents(); // Get content in Delta format
-            this.socket.emit('editorUpdate', content);
-            const action = this.isEditorLocked ? 'lock' : 'unlock';
-            this.editorSendAction(action);
-        }
+        return this.editorManager.editorUpdate();
     }
 
     handleEditorUpdateData(data) {
-        if (this.isEditorPrivate) {
-            // In private mode: keep collab buffer up to date but do NOT touch the visible editor
-            this.collabEditorDelta = data;
-            return;
-        }
-        this.editorOpen();
-        quill.setContents(data);
+        return this.editorManager.handleEditorUpdateData(data);
     }
 
     handleEditorData(data) {
-        if (this.isEditorPrivate) {
-            // In private mode: compose incoming delta into the cached collab buffer
-            try {
-                const Delta = Quill.import('delta');
-                const base = new Delta(this.collabEditorDelta || { ops: [] });
-                this.collabEditorDelta = base.compose(new Delta(data));
-            } catch (e) {
-                console.warn('handleEditorData (private) compose failed', e);
-            }
-            return;
-        }
-        this.editorOpen();
-        quill.updateContents(data);
+        return this.editorManager.handleEditorData(data);
     }
 
     editorOpen() {
-        if (!this.isEditorOpen) {
-            this.sound('open');
-            this.toggleEditor();
-        }
+        return this.editorManager.editorOpen();
     }
 
     handleEditorActionsData(data) {
-        const { peer_name, action } = data;
-        switch (action) {
-            case 'open':
-                if (this.isEditorOpen) return;
-                this.toggleEditor();
-                this.userLog('info', `${icons.editor} ${peer_name} open editor`, 'top-end', 6000);
-                break;
-            case 'close':
-                if (!this.isEditorOpen) return;
-                this.toggleEditor();
-                this.userLog('info', `${icons.editor} ${peer_name} close editor`, 'top-end', 6000);
-                break;
-            case 'clean':
-                if (this.isEditorPrivate) {
-                    // Don't wipe private notes when others clean the collaborative editor
-                    this.collabEditorDelta = null;
-                    this.userLog('info', `${icons.editor} ${peer_name} cleared editor`, 'top-end', 6000);
-                    break;
-                }
-                quill.setText('');
-                this.userLog('info', `${icons.editor} ${peer_name} cleared editor`, 'top-end', 6000);
-                break;
-            case 'lock':
-                if (this.isEditorPrivate) {
-                    this.isEditorLocked = true;
-                    this.userLog('info', `${icons.editor} ${peer_name} locked the editor`, 'top-end', 6000);
-                    break;
-                }
-                this.isEditorLocked = true;
-                quill.enable(false);
-                this.userLog('info', `${icons.editor} ${peer_name} locked the editor`, 'top-end', 6000);
-                break;
-            case 'unlock':
-                if (this.isEditorPrivate) {
-                    this.isEditorLocked = false;
-                    this.userLog('info', `${icons.editor} ${peer_name} unlocked the editor`, 'top-end', 6000);
-                    break;
-                }
-                this.isEditorLocked = false;
-                quill.enable(true);
-                this.userLog('info', `${icons.editor} ${peer_name} unlocked the editor`, 'top-end', 6000);
-                break;
-            default:
-                break;
-        }
+        return this.editorManager.handleEditorActionsData(data);
     }
 
     editorIsLocked() {
-        return this.isEditorLocked;
+        return this.editorManager.editorIsLocked();
     }
 
-    // ####################################################
-    // EDITOR PRIVATE NOTE MODE (local-only, never broadcasted, never persisted)
-    // Notes live only in memory for the current session. The user is
-    // prompted to Save or Discard when switching back to collaborative mode.
-    // ####################################################
-
-    // No-op kept for backward compatibility with existing callers (e.g. quill 'text-change').
     persistPrivateEditor() {
-        /* intentionally empty: private notes are not persisted */
+        return this.editorManager.persistPrivateEditor();
     }
 
-    async toggleEditorPrivate() {
-        if (this.isEditorPrivate) {
-            await this._promptExitEditorPrivateMode();
-            return;
-        }
-
-        // Entering private mode -> cache collab buffer, start with an empty private buffer
-        this.collabEditorDelta = quill.getContents();
-        this.isEditorPrivate = true;
-        quill.setContents({ ops: [] });
-        quill.enable(true); // always editable in private mode
-        show(editorPrivateBtn);
-        hide(editorCollabBtn);
-        editorRoom.classList.add('editor-private-mode');
-        this.userLog(
-            'info',
-            `${icons.editor} Private Note mode: your edits are NOT shared and NOT saved`,
-            'top-end',
-            6000
-        );
-        this.sound('click');
+    toggleEditorPrivate() {
+        return this.editorManager.toggleEditorPrivate();
     }
 
-    async _promptExitEditorPrivateMode() {
-        // If the buffer is empty there is nothing to lose, exit silently.
-        if (quill.getText().trim().length === 0) {
-            this._exitEditorPrivateMode();
-            return;
-        }
-
-        const result = await Swal.fire({
-            background: swalBackground,
-            position: 'center',
-            imageUrl: image.editor || image.delete,
-            title: 'Exit Private Note mode?',
-            text: 'Your private note will be lost unless you save it to a file.',
-            showDenyButton: true,
-            showCancelButton: true,
-            confirmButtonText: 'Save as Text',
-            denyButtonText: 'Save as HTML',
-            cancelButtonText: 'Discard',
-            reverseButtons: true,
-            allowOutsideClick: false,
-            showClass: { popup: 'animate__animated animate__fadeInDown' },
-            hideClass: { popup: 'animate__animated animate__fadeOutUp' },
-        });
-
-        if (result.isConfirmed) {
-            this.saveEditorAsText();
-            this._exitEditorPrivateMode();
-        } else if (result.isDenied) {
-            this.saveEditorAsHtml();
-            this._exitEditorPrivateMode();
-        } else if (result.dismiss === Swal.DismissReason.cancel) {
-            // User chose Discard
-            this._exitEditorPrivateMode();
-        }
-        // Any other dismissal: stay in private mode (no-op)
+    _promptExitEditorPrivateMode() {
+        return this.editorManager._promptExitEditorPrivateMode();
     }
 
     _exitEditorPrivateMode() {
-        this.isEditorPrivate = false;
-        quill.setContents(this.collabEditorDelta || { ops: [] });
-        // Re-apply presenter lock state if any
-        if (!isPresenter && this.isEditorLocked) {
-            quill.enable(false);
-        } else {
-            quill.enable(true);
-        }
-        show(editorCollabBtn);
-        hide(editorPrivateBtn);
-        editorRoom.classList.remove('editor-private-mode');
-        this.userLog('info', `${icons.editor} Collaborative editor restored`, 'top-end', 4000);
-        this.sound('click');
+        return this.editorManager._exitEditorPrivateMode();
     }
 
     editorUndo() {
-        quill.history.undo();
+        return this.editorManager.editorUndo();
     }
 
     editorRedo() {
-        quill.history.redo();
+        return this.editorManager.editorRedo();
     }
 
     editorCopy() {
-        const content = quill.getText();
-        if (content.trim().length === 0) {
-            return this.userLog('info', 'Nothing to copy', 'top-end');
-        }
-        copyToClipboard(content, false);
+        return this.editorManager.editorCopy();
     }
 
     editorClean() {
-        if (!isPresenter && this.editorIsLocked() && !this.isEditorPrivate) {
-            userLog('info', 'The Editor is locked. \n You cannot interact with it.', 'top-right');
-            return;
-        }
-        const content = quill.getText();
-        if (content.trim().length === 0) {
-            return this.userLog('info', 'Nothing to clear', 'top-end');
-        }
-        Swal.fire({
-            background: swalBackground,
-            position: 'center',
-            title: this.isEditorPrivate ? 'Clear your private note?' : 'Clear the editor content?',
-            imageUrl: image.delete,
-            showDenyButton: true,
-            confirmButtonText: `Yes`,
-            denyButtonText: `No`,
-            showClass: { popup: 'animate__animated animate__fadeInDown' },
-            hideClass: { popup: 'animate__animated animate__fadeOutUp' },
-        }).then((result) => {
-            if (result.isConfirmed) {
-                quill.setText('');
-                if (!this.isEditorPrivate) {
-                    this.editorSendAction('clean');
-                }
-                this.sound('delete');
-            }
-        });
+        return this.editorManager.editorClean();
     }
 
     editorSave() {
-        Swal.fire({
-            background: swalBackground,
-            position: 'top',
-            imageUrl: image.save,
-            title: 'Editor save options',
-            showDenyButton: true,
-            showCancelButton: true,
-            cancelButtonColor: 'red',
-            denyButtonColor: 'green',
-            confirmButtonText: `Text`,
-            denyButtonText: `Html`,
-            cancelButtonText: `Cancel`,
-            showClass: { popup: 'animate__animated animate__fadeInDown' },
-            hideClass: { popup: 'animate__animated animate__fadeOutUp' },
-        }).then((result) => {
-            this.handleEditorSaveResult(result);
-        });
+        return this.editorManager.editorSave();
     }
 
     handleEditorSaveResult(result) {
-        if (result.isConfirmed) {
-            this.saveEditorAsText();
-        } else if (result.isDenied) {
-            this.saveEditorAsHtml();
-        }
+        return this.editorManager.handleEditorSaveResult(result);
     }
 
     saveEditorAsText() {
-        const content = quill.getText().trim();
-        if (content.length === 0) {
-            return this.userLog('info', 'No data to save!', 'top-end');
-        }
-        const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
-        const fileName = this.generateFileName('editor.txt');
-        this.saveBlobToFile(blob, fileName);
-        this.sound('download');
+        return this.editorManager.saveEditorAsText();
     }
 
     saveEditorAsHtml() {
-        const content = quill.root.innerHTML.trim();
-        if (content === '<p><br></p>') {
-            return this.userLog('info', 'No data to save!', 'top-end');
-        }
-        const fileName = this.generateFileName('editor.html');
-        this.saveAsHtml(content, fileName);
-        this.sound('download');
+        return this.editorManager.saveEditorAsHtml();
     }
 
     generateFileName(extension) {
-        return `Room_${this.room_id}_${getDataTimeString()}_${extension}`;
+        return this.editorManager.generateFileName(extension);
     }
 
     saveAsHtml(content, file) {
-        const blob = new Blob([content], { type: 'text/html' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = file;
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(() => {
-            document.body.removeChild(a);
-            window.URL.revokeObjectURL(url);
-        }, 100);
+        return this.editorManager.saveAsHtml(content, file);
     }
 
     editorSendAction(action) {
-        this.socket.emit('editorActions', { peer_name: this.peer_name, action: action });
+        return this.editorManager.editorSendAction(action);
+    }
+
+    get isEditorPinned() {
+        return this.editorManager.isEditorPinned;
+    }
+    set isEditorPinned(val) {
+        this.editorManager.isEditorPinned = val;
     }
 
     // ####################################################
