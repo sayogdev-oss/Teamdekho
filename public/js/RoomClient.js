@@ -466,6 +466,7 @@ class RoomClient {
         this.isRNNoiseSupported = true; // Will be set to false if AudioWorklet/WASM not available
         this.rnnoiseManager = new RNNoiseManager(this);
         this.reactionManager = new ReactionManager(this);
+        this.followMeManager = new FollowMeManager(this);
 
         this.videoProducerId = null;
         this.screenProducerId = null;
@@ -1385,7 +1386,7 @@ class RoomClient {
         this.socket.on('breakoutRoomEnd', this.handleBreakoutRoomEnd);
         this.socket.on('breakoutRoomCountdown', this.handleBreakoutRoomCountdown);
         this.socket.on('breakoutRoomHelp', this.handleBreakoutRoomHelp);
-        this.socket.on('followMe', this.handleFollowMeData);
+        this.socket.on('followMe', (data) => this.followMeManager.handleFollowMeData(data));
         this.socket.on('chatReaction', (data) => this.reactionManager.handleChatReaction(data));
         this.socket.on('consumerScore', ({ consumerId, score }) => {
             if (!score) return;
@@ -11948,150 +11949,7 @@ class RoomClient {
         return this._moderator;
     }
 
-    // ####################################################
-    // FOLLOW ME
-    // ####################################################
 
-    applyPendingFollowMe() {
-        if (!this._pendingFollowMe) return;
-        const { peerId, action } = this._pendingFollowMe;
-        this._pendingFollowMe = null;
-
-        this.userLog('info', `${icons.moderator} Moderator has Everyone Follows Me enabled`, 'top-end');
-
-        if (peerId && action) {
-            setTimeout(() => {
-                if (action === 'pin') {
-                    this.followMePin(peerId);
-                } else if (action === 'focus') {
-                    this.followMeFocus(peerId);
-                }
-            }, 1000);
-        }
-    }
-
-    handleFollowMeData = (data) => {
-        console.log('SocketOn Follow me', data);
-        this.handleFollowMe(data);
-    };
-
-    toggleFollowMe(enabled) {
-        this.isFollowMeActive = enabled;
-        this.emitFollowMe({ action: 'toggle', status: enabled });
-        if (enabled) {
-            if (this.isVideoPinned && this.pinnedVideoPlayerId) {
-                const videoEl = this.getId(this.pinnedVideoPlayerId);
-                const peerId = videoEl ? videoEl.getAttribute('name') : null;
-                if (peerId) {
-                    this.emitFollowMe({ action: 'pin', peerId: peerId });
-                }
-            }
-            if (isHideALLVideosActive) {
-                const focused = this.videoMediaContainer.querySelector('[focus-mode]');
-                if (focused) {
-                    const focusedVideo = focused.querySelector('video[name]');
-                    const peerId = focusedVideo ? focusedVideo.getAttribute('name') : null;
-                    if (peerId) {
-                        this.emitFollowMe({ action: 'focus', peerId: peerId });
-                    }
-                }
-            }
-        }
-        if (!enabled) {
-            this.emitFollowMe({ action: 'unpin' });
-            this.emitFollowMe({ action: 'unfocus' });
-        }
-    }
-
-    emitFollowMe(data) {
-        if (!isPresenter) return;
-        this.socket.emit('followMe', {
-            peer_name: this.peer_name,
-            peer_uuid: this.peer_uuid,
-            ...data,
-        });
-    }
-
-    handleFollowMe(data) {
-        if (isPresenter) return;
-
-        switch (data.action) {
-            case 'toggle':
-                data.status
-                    ? this.userLog('info', `${icons.moderator} Moderator enabled: Everyone Follows Me`, 'top-end')
-                    : this.userLog('info', `${icons.moderator} Moderator disabled: Everyone Follows Me`, 'top-end');
-                break;
-            case 'pin':
-                this.followMePin(data.peerId);
-                break;
-            case 'unpin':
-                this.followMeUnpin();
-                break;
-            case 'focus':
-                this.followMeFocus(data.peerId);
-                break;
-            case 'unfocus':
-                this.followMeUnfocus(data.peerId);
-                break;
-            default:
-                break;
-        }
-    }
-
-    followMePin(peerId) {
-        if (this.isVideoPinned) {
-            this.followMeUnpin();
-        }
-        const videoEl = this.getVideoElementByPeerId(peerId);
-        if (videoEl) {
-            const btnPn = this.getId(`${videoEl.id}__pin`);
-            if (btnPn) {
-                btnPn.click();
-                return;
-            }
-        }
-        console.warn('Follow me pin: no video found for peer', peerId);
-    }
-
-    followMeUnpin() {
-        if (!this.isVideoPinned || !this.pinnedVideoPlayerId) return;
-        const btnPn = this.getId(`${this.pinnedVideoPlayerId}__pin`);
-        if (btnPn) {
-            btnPn.click();
-        }
-    }
-
-    followMeFocus(peerId) {
-        if (isHideALLVideosActive) {
-            this.followMeUnfocus();
-        }
-        const videoEl = this.getVideoElementByPeerId(peerId);
-        if (videoEl) {
-            const containerId = videoEl.id + '__video';
-            const container = this.getId(containerId);
-            if (container) {
-                this.toggleFocusMode(containerId);
-                return;
-            }
-        }
-        console.warn('Follow me focus: no video found for peer', peerId);
-    }
-
-    followMeUnfocus(peerId) {
-        if (!isHideALLVideosActive) return;
-        const focused = this.videoMediaContainer.querySelector('[focus-mode]');
-        if (focused) {
-            this.toggleFocusMode(focused.id);
-        }
-    }
-
-    getVideoElementByPeerId(peerId) {
-        const videos = document.querySelectorAll('video[name]');
-        for (const video of videos) {
-            if (video.getAttribute('name') === peerId) return video;
-        }
-        return null;
-    }
 
     // ####################################################
     // UPDATE PEER INFO
@@ -12230,167 +12088,7 @@ class RoomClient {
         return emojiPeerInfo.map((item) => `${item.emoji} <b>${item.label}:</b> ${item.value}`).join('<br/>');
     }
 
-    // ####################################################
-    // HANDLE PEER GEOLOCATION
-    // ####################################################
 
-    askPeerGeoLocation(id) {
-        const words = id.split('___');
-        const peer_id = words[0];
-        const cmd = {
-            type: 'geoLocation',
-            from_peer_name: this.peer_name,
-            from_peer_id: this.peer_id,
-            peer_id: peer_id,
-            broadcast: false,
-        };
-        this.emitCmd(cmd);
-        this.peerActionProgress(
-            'Geolocation',
-            'Geolocation requested. Please wait for confirmation...',
-            6000,
-            'geolocation'
-        );
-    }
-
-    sendPeerGeoLocation(peer_id, type, data) {
-        const cmd = {
-            type: type,
-            from_peer_name: this.peer_name,
-            from_peer_id: this.peer_id,
-            peer_id: peer_id,
-            data: data,
-            broadcast: false,
-        };
-        this.emitCmd(cmd);
-    }
-
-    confirmPeerGeoLocation(cmd) {
-        this.sound('notify');
-        Swal.fire({
-            allowOutsideClick: false,
-            allowEscapeKey: false,
-            background: swalBackground,
-            imageUrl: image.geolocation,
-            position: 'center',
-            title: 'Geo Location',
-            html: renderRoomTemplate('popupGeoLocationPromptTemplate', {
-                text: {
-                    message: `Would you like to share your location to ${cmd.from_peer_name}?`,
-                },
-            }),
-            showDenyButton: true,
-            confirmButtonText: `Yes`,
-            denyButtonText: `No`,
-            showClass: { popup: 'animate__animated animate__fadeInDown' },
-            hideClass: { popup: 'animate__animated animate__fadeOutUp' },
-        }).then((result) => {
-            result.isConfirmed ? this.getPeerGeoLocation(cmd.from_peer_id) : this.denyPeerGeoLocation(cmd.from_peer_id);
-        });
-    }
-
-    getPeerGeoLocation(peer_id, options = {}) {
-        if ('geolocation' in navigator) {
-            navigator.geolocation.getCurrentPosition(
-                function (position) {
-                    const geoLocation = {
-                        latitude: position.coords.latitude,
-                        longitude: position.coords.longitude,
-                    };
-                    console.log('GeoLocation --->', geoLocation);
-
-                    rc.sendPeerGeoLocation(peer_id, 'geoLocationOK', geoLocation);
-                    // openURL(`https://www.openstreetmap.org/?mlat=${geoLocation.latitude}&mlon=${geoLocation.longitude}`, true);
-                    // openURL(`http://maps.apple.com/?ll=${geoLocation.latitude},${geoLocation.longitude}`, true);
-                    // openURL(`https://www.google.com/maps/search/?api=1&query=${geoLocation.latitude},${geoLocation.longitude}`, true);
-                },
-                function (error) {
-                    let geoError = error;
-                    switch (error.code) {
-                        case error.PERMISSION_DENIED:
-                            geoError = 'User denied the request for Geolocation';
-                            break;
-                        case error.POSITION_UNAVAILABLE:
-                            geoError = 'Location information is unavailable';
-                            break;
-                        case error.TIMEOUT:
-                            geoError = 'The request to get user location timed out';
-                            break;
-                        case error.UNKNOWN_ERROR:
-                            geoError = 'An unknown error occurred';
-                            break;
-                        case 'NOT_SUPPORTED':
-                            geoError = 'Geolocation is not supported by this browser';
-                            break;
-                        default:
-                            geoError =
-                                'Unable to retrieve your location. Please ensure location services are enabled in your device and browser settings, and try again';
-                            break;
-                    }
-                    // Add suggestion for unknown errors
-                    if (
-                        error.code === error.UNKNOWN_ERROR ||
-                        error.code === undefined ||
-                        geoError.startsWith('Unable to retrieve')
-                    ) {
-                        geoError +=
-                            ' If the problem persists, check your device and browser location permissions, and ensure you have a clear view of the sky (for GPS)';
-                    }
-                    rc.sendPeerGeoLocation(peer_id, 'geoLocationKO', `${rc.peer_name}: ${geoError}`);
-                    rc.userLog('warning', geoError, 'top-end', 5000);
-                },
-                {
-                    enableHighAccuracy: true,
-                    timeout: 10000,
-                    maximumAge: 0,
-                    ...options,
-                }
-            );
-        } else {
-            rc.sendPeerGeoLocation(
-                peer_id,
-                'geoLocationKO',
-                `${rc.peer_name}: Geolocation is not supported by this browser`
-            );
-            rc.userLog('warning', 'Geolocation is not supported by this browser', 'top-end', 5000);
-        }
-    }
-
-    denyPeerGeoLocation(peer_id) {
-        rc.sendPeerGeoLocation(peer_id, 'geoLocationKO', `${rc.peer_name}: Has declined permission for geolocation`);
-    }
-
-    handleGeoPeerLocation(cmd) {
-        const geoLocation = cmd.data;
-        this.sound('notify');
-        Swal.fire({
-            allowOutsideClick: false,
-            allowEscapeKey: false,
-            background: swalBackground,
-            imageUrl: image.geolocation,
-            position: 'center',
-            title: 'Geo Location',
-            html: renderRoomTemplate('popupGeoLocationPromptTemplate', {
-                text: {
-                    message: `Would you like to open ${cmd.from_peer_name} geolocation?`,
-                },
-            }),
-            showDenyButton: true,
-            confirmButtonText: `Yes`,
-            denyButtonText: `No`,
-            showClass: { popup: 'animate__animated animate__fadeInDown' },
-            hideClass: { popup: 'animate__animated animate__fadeOutUp' },
-        }).then((result) => {
-            if (result.isConfirmed) {
-                // openURL(`https://www.openstreetmap.org/?mlat=${geoLocation.latitude}&mlon=${geoLocation.longitude}`, true);
-                // openURL(`http://maps.apple.com/?ll=${geoLocation.latitude},${geoLocation.longitude}`, true);
-                openURL(
-                    `https://www.google.com/maps/search/?api=1&query=${geoLocation.latitude},${geoLocation.longitude}`,
-                    true
-                );
-            }
-        });
-    }
 
     // ##############################################
     // LiveAvatar Video AI
@@ -13653,63 +13351,7 @@ class RoomClient {
         }
     }
 
-    // ####################################################
-    // ROOM NOTIFICATIONS
-    // ####################################################
 
-    cleanNotifications() {
-        getId('notifyEmailInput').value = '';
-        getId('switchNotifyUserJoin').checked = false;
-        return true;
-    }
-
-    saveNotifications(validate = true) {
-        if (validate && !this.isValidNotifications()) return;
-
-        const data = this.getNotificationsData();
-
-        if (!data) return;
-
-        this.setNotificationsData(data);
-    }
-
-    setNotificationsData(data) {
-        this.socket.emit('updateRoomNotifications', data, (response) => {
-            response.error
-                ? this.cleanNotifications() && this.userLog('warning', response.error, 'top-end', 6000)
-                : this.roomMessage('save_room_notifications', true);
-        });
-    }
-
-    isValidNotifications() {
-        const notifyEmailInput = getId('notifyEmailInput');
-        if (!this.isValidEmail(notifyEmailInput.value)) {
-            notifyEmailInput.value = '';
-            this.userLog('warning', 'Email not valid', 'top-end', 6000);
-            return false;
-        }
-        return true;
-    }
-
-    getNotificationsData() {
-        const notifyEmailInput = getId('notifyEmailInput');
-        const switchNotifyUserJoin = getId('switchNotifyUserJoin');
-
-        return {
-            peer_name: this.peer_name,
-            peer_uuid: this.peer_uuid,
-            notifications: {
-                mode: {
-                    email: notifyEmailInput.value,
-                    //slack...
-                },
-                events: {
-                    join: switchNotifyUserJoin.checked,
-                    // leave...
-                },
-            },
-        };
-    }
 
     // ####################################################
     // HELPERS
@@ -13753,5 +13395,90 @@ class RoomClient {
 
     handleEmojiSound(cmd) {
         return this.reactionManager.handleEmojiSound(cmd);
+    }
+
+    // FollowMe / Geolocation / Notifications Delegation
+    applyPendingFollowMe() {
+        return this.followMeManager.applyPendingFollowMe();
+    }
+
+    handleFollowMeData = (data) => {
+        return this.followMeManager.handleFollowMeData(data);
+    };
+
+    toggleFollowMe(enabled) {
+        return this.followMeManager.toggleFollowMe(enabled);
+    }
+
+    emitFollowMe(data) {
+        return this.followMeManager.emitFollowMe(data);
+    }
+
+    handleFollowMe(data) {
+        return this.followMeManager.handleFollowMe(data);
+    }
+
+    followMePin(peerId) {
+        return this.followMeManager.followMePin(peerId);
+    }
+
+    followMeUnpin() {
+        return this.followMeManager.followMeUnpin();
+    }
+
+    followMeFocus(peerId) {
+        return this.followMeManager.followMeFocus(peerId);
+    }
+
+    followMeUnfocus(peerId) {
+        return this.followMeManager.followMeUnfocus(peerId);
+    }
+
+    getVideoElementByPeerId(peerId) {
+        return this.followMeManager.getVideoElementByPeerId(peerId);
+    }
+
+    askPeerGeoLocation(id) {
+        return this.followMeManager.askPeerGeoLocation(id);
+    }
+
+    sendPeerGeoLocation(peer_id, type, data) {
+        return this.followMeManager.sendPeerGeoLocation(peer_id, type, data);
+    }
+
+    confirmPeerGeoLocation(cmd) {
+        return this.followMeManager.confirmPeerGeoLocation(cmd);
+    }
+
+    getPeerGeoLocation(peer_id, options = {}) {
+        return this.followMeManager.getPeerGeoLocation(peer_id, options);
+    }
+
+    denyPeerGeoLocation(peer_id) {
+        return this.followMeManager.denyPeerGeoLocation(peer_id);
+    }
+
+    handleGeoPeerLocation(cmd) {
+        return this.followMeManager.handleGeoPeerLocation(cmd);
+    }
+
+    cleanNotifications() {
+        return this.followMeManager.cleanNotifications();
+    }
+
+    saveNotifications(validate = true) {
+        return this.followMeManager.saveNotifications(validate);
+    }
+
+    setNotificationsData(data) {
+        return this.followMeManager.setNotificationsData(data);
+    }
+
+    isValidNotifications() {
+        return this.followMeManager.isValidNotifications();
+    }
+
+    getNotificationsData() {
+        return this.followMeManager.getNotificationsData();
     }
 } // End
