@@ -358,8 +358,6 @@ class RoomClient {
         this.isZoomCenterMode = false;
         this.isChatOpen = false;
         this.isChatEmojiOpen = false;
-        this.isPollOpen = false;
-        this.isPollPinned = false;
         this.isEditorOpen = false;
         this.isEditorLocked = false;
         this.isEditorPinned = false;
@@ -389,7 +387,7 @@ class RoomClient {
         this.camVideo = false;
         this.videoQualitySelectedIndex = 0;
 
-        this.pollSelectedOptions = {};
+        this.chatGPTContext = [];
         this.chatGPTContext = [];
         this.deepSeekContext = [];
         this.chatGPTEnabled = false;
@@ -467,6 +465,7 @@ class RoomClient {
         this.rnnoiseManager = new RNNoiseManager(this);
         this.reactionManager = new ReactionManager(this);
         this.followMeManager = new FollowMeManager(this);
+        this.pollManager = new PollManager(this);
 
         this.videoProducerId = null;
         this.screenProducerId = null;
@@ -1825,7 +1824,7 @@ class RoomClient {
     };
 
     handleUpdatePolls = (data) => {
-        this.pollsUpdate(data);
+        return this.pollManager.pollsUpdate(data);
     };
 
     handleEditorChange = (data) => {
@@ -5702,13 +5701,11 @@ class RoomClient {
             this.isVideoPinned ||
             this.isChatPinned ||
             this.isEditorPinned ||
-            this.isPollPinned ||
             this.isBreakoutPinned ||
             transcription.isPin();
         const menuBarWidth =
             this.isVideoPinned ||
             this.isChatPinned ||
-            this.isPollPinned ||
             this.isBreakoutPinned ||
             transcription.isPin()
                 ? '75%'
@@ -7364,107 +7361,35 @@ class RoomClient {
     // ##############################################
 
     togglePoll() {
-        pollRoom.classList.toggle('show');
-        if (!this.isPollOpen) {
-            hide(pollMinButton);
-            if (!this.isMobileDevice) {
-                BUTTONS.poll.pollMaxButton && show(pollMaxButton);
-            }
-            this.pollCenter();
-            this.sound('open');
-        }
-        this.isPollOpen = !this.isPollOpen;
-
-        if (this.isPollPinned) this.pollUnpin();
-
-        if (!this.isMobileDevice && this.isPollOpen && this.canBePinned()) {
-            this.togglePollPin();
-        }
+        return this.pollManager.togglePoll();
     }
 
     togglePollPin() {
-        if (transcription.isPin()) {
-            return userLog('info', 'Please unpin the transcription that appears to be currently pinned', 'top-end');
-        }
-        if (this.isChatPinned) {
-            return userLog('info', 'Please unpin the chat that appears to be currently pinned', 'top-end');
-        }
-        if (this.isEditorPinned) {
-            return userLog('info', 'Please unpin the editor that appears to be currently pinned', 'top-end');
-        }
-        if (this.isBreakoutPinned) {
-            return userLog('info', 'Please unpin the breakout rooms that appears to be currently pinned', 'top-end');
-        }
-        this.isPollPinned ? this.pollUnpin() : this.pollPin();
-        this.sound('click');
+        return this.pollManager.togglePollPin();
     }
 
     pollPin() {
-        if (!this.isVideoPinned) {
-            this.videoMediaContainerPin();
-        }
-        this.pollPinned();
-        this.isPollPinned = true;
-        setColor(pollTogglePin, 'lime');
-        this.resizeVideoMenuBar();
-        resizeVideoMedia();
-        pollRoom.style.resize = 'none';
-        if (!this.isMobileDevice) this.makeUnDraggable(pollRoom, pollHeader);
+        return this.pollManager.pollPin();
     }
 
     pollUnpin() {
-        if (!this.isVideoPinned) {
-            this.videoMediaContainerUnpin();
-        }
-        pollRoom.classList.remove('panel-slide-in');
-        pollRoom.style.maxWidth = '600px';
-        pollRoom.style.maxHeight = '700px';
-        this.pollCenter();
-        this.isPollPinned = false;
-        setColor(pollTogglePin, 'white');
-        this.resizeVideoMenuBar();
-        resizeVideoMedia();
-        if (!this.isMobileDevice) this.makeDraggable(pollRoom, pollHeader);
+        return this.pollManager.pollUnpin();
     }
 
     pollPinned() {
-        pollRoom.style.position = 'absolute';
-        pollRoom.style.top = 0;
-        pollRoom.style.right = 0;
-        pollRoom.style.left = null;
-        pollRoom.style.transform = null;
-        pollRoom.style.maxWidth = '25%';
-        pollRoom.style.maxHeight = '100%';
-        pollRoom.classList.remove('panel-slide-in');
-        void pollRoom.offsetWidth;
-        pollRoom.classList.add('panel-slide-in');
+        return this.pollManager.pollPinned();
     }
 
     pollCenter() {
-        pollRoom.style.position = 'fixed';
-        pollRoom.style.transform = 'translate(-50%, -50%)';
-        pollRoom.style.top = '50%';
-        pollRoom.style.left = '50%';
+        return this.pollManager.pollCenter();
     }
 
     pollMaximize() {
-        pollRoom.style.maxHeight = '100vh';
-        pollRoom.style.maxWidth = '100vw';
-        this.pollCenter();
-        hide(pollMaxButton);
-        BUTTONS.poll.pollMaxButton && show(pollMinButton);
+        return this.pollManager.pollMaximize();
     }
 
     pollMinimize() {
-        this.pollCenter();
-        hide(pollMinButton);
-        BUTTONS.poll.pollMaxButton && show(pollMaxButton);
-        if (this.isPollPinned) {
-            this.pollPin();
-        } else {
-            pollRoom.style.maxWidth = '600px';
-            pollRoom.style.maxHeight = '700px';
-        }
+        return this.pollManager.pollMinimize();
     }
 
     // ####################################################
@@ -7646,257 +7571,35 @@ class RoomClient {
     }
 
     pollsUpdate(polls) {
-        if (!this.isPollOpen) this.togglePoll();
-
-        pollsContainer.innerHTML = '';
-        polls.forEach((poll, index) => {
-            const pollDiv = document.createElement('div');
-            pollDiv.className = 'poll';
-
-            const question = document.createElement('p');
-            question.className = 'poll-question';
-            question.textContent = poll.question;
-            pollDiv.appendChild(question);
-
-            const options = document.createElement('div');
-            options.className = 'options';
-
-            poll.options.forEach((option) => {
-                const optionDiv = document.createElement('div');
-                const input = document.createElement('input');
-                input.type = 'radio';
-                input.name = `poll${index}`;
-                input.value = option;
-                if (this.pollSelectedOptions[index] === option) {
-                    input.checked = true;
-                }
-
-                input.addEventListener('change', () => {
-                    this.pollSelectedOptions[index] = option;
-                    this.socket.emit('vote', { pollIndex: index, option });
-                });
-
-                const label = document.createElement('label');
-                label.textContent = option;
-
-                optionDiv.appendChild(input);
-                optionDiv.appendChild(label);
-                options.appendChild(optionDiv);
-            });
-            pollDiv.appendChild(options);
-
-            // Only the presenters
-            // if (isPresenter) {
-            const pollButtonsDiv = document.createElement('div');
-            pollButtonsDiv.className = 'poll-btns';
-
-            // Toggle voters button
-            const toggleButton = document.createElement('button');
-            const toggleButtonIcon = document.createElement('i');
-            toggleButtonIcon.className = 'fas fa-users';
-            toggleButton.id = 'toggleVoters';
-            toggleButton.className = 'view-btn';
-            // Append the icon to the button
-            toggleButton.insertBefore(toggleButtonIcon, toggleButton.firstChild);
-            toggleButton.addEventListener('click', () => {
-                votersList.style.display === 'none'
-                    ? (votersList.style.display = 'block')
-                    : (votersList.style.display = 'none');
-            });
-            pollButtonsDiv.appendChild(toggleButton);
-
-            // Edit poll button using swal
-            const editPollButton = document.createElement('button');
-            const editPollButtonIcon = document.createElement('i');
-            editPollButtonIcon.className = 'fas fa-pen-to-square';
-            editPollButton.id = 'editPoll';
-            editPollButton.className = 'poll-btn';
-            editPollButton.insertBefore(editPollButtonIcon, editPollButton.firstChild);
-            editPollButton.addEventListener('click', () => {
-                Swal.fire({
-                    allowOutsideClick: false,
-                    allowEscapeKey: false,
-                    background: swalBackground,
-                    title: 'Edit Poll',
-                    html: this.createPollInputs(poll),
-                    focusConfirm: false,
-                    showCancelButton: true,
-                    confirmButtonText: 'Save',
-                    cancelButtonText: 'Cancel',
-                    cancelButtonColor: '#dc3545',
-                    preConfirm: () => {
-                        const newQuestion = document.getElementById('swal-input-question').value;
-                        const newOptions = this.getPollOptions(poll.options.length);
-                        this.socket.emit('editPoll', {
-                            index,
-                            question: newQuestion,
-                            options: newOptions,
-                            peer_name: this.peer_name,
-                            peer_uuid: this.peer_uuid,
-                        });
-                    },
-                    showClass: { popup: 'animate__animated animate__fadeInDown' },
-                    hideClass: { popup: 'animate__animated animate__fadeOutUp' },
-                });
-            });
-            pollButtonsDiv.appendChild(editPollButton);
-
-            // Delete poll button
-            const deletePollButton = document.createElement('button');
-            const deletePollButtonIcon = document.createElement('i');
-            deletePollButtonIcon.className = 'fas fa-trash';
-            deletePollButton.id = 'delPoll';
-            deletePollButton.className = 'del-btn';
-            deletePollButton.insertBefore(deletePollButtonIcon, deletePollButton.firstChild);
-            deletePollButton.addEventListener('click', () => {
-                // confirm before delete poll
-                Swal.fire({
-                    background: swalBackground,
-                    position: 'top',
-                    title: 'Delete this poll?',
-                    imageUrl: image.delete,
-                    showDenyButton: true,
-                    confirmButtonText: `Yes`,
-                    denyButtonText: `No`,
-                    showClass: { popup: 'animate__animated animate__fadeInDown' },
-                    hideClass: { popup: 'animate__animated animate__fadeOutUp' },
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        this.socket.emit('deletePoll', { index, peer_name: this.peer_name, peer_uuid: this.peer_uuid });
-                    }
-                });
-            });
-            pollButtonsDiv.appendChild(deletePollButton);
-
-            // Add thematic break
-            const hr = document.createElement('hr');
-            pollDiv.appendChild(hr);
-
-            // Append buttons to poll
-            pollDiv.appendChild(pollButtonsDiv);
-
-            // Create voter lists
-            const votersList = document.createElement('ul');
-            votersList.style.display = 'none';
-            for (const [user, vote] of Object.entries(poll.voters)) {
-                const voter = document.createElement('li');
-                voter.textContent = `${user}: ${vote}`;
-                votersList.appendChild(voter);
-            }
-            pollDiv.appendChild(votersList);
-            // }
-
-            pollsContainer.appendChild(pollDiv);
-
-            if (!this.isMobileDevice) {
-                setTippy('toggleVoters', 'Toggle voters', 'top');
-                setTippy('delPoll', 'Delete poll', 'top');
-                setTippy('editPoll', 'Edit poll', 'top');
-            }
-        });
+        return this.pollManager.pollsUpdate(polls);
     }
 
     pollCreateNewForm(e) {
-        e.preventDefault();
-
-        if (this._moderator.polls_cant_create && !isPresenter && !isCoHost) {
-            return userLog(
-                'warning',
-                'The moderator does not allow non-presenters to create or edit polls',
-                'top-end',
-                6000
-            );
-        }
-
-        const question = e.target.question.value;
-        const optionInputs = document.querySelectorAll('.option-input');
-        const options = Array.from(optionInputs).map((input) => input.value.trim());
-
-        this.socket.emit('createPoll', { question, options });
-
-        e.target.reset();
-        optionsContainer.innerHTML = '';
-        const initialOptionInput = document.createElement('input');
-        initialOptionInput.type = 'text';
-        initialOptionInput.name = 'option';
-        initialOptionInput.className = 'option-input';
-        initialOptionInput.required = true;
-        optionsContainer.appendChild(initialOptionInput);
+        return this.pollManager.pollCreateNewForm(e);
     }
 
     pollAddOptions() {
-        const optionInput = document.createElement('input');
-        optionInput.type = 'text';
-        optionInput.name = 'option';
-        optionInput.className = 'option-input';
-        optionInput.required = true;
-        optionsContainer.appendChild(optionInput);
+        return this.pollManager.pollAddOptions();
     }
 
     pollDeleteOptions() {
-        const optionInputs = document.querySelectorAll('.option-input');
-        if (optionInputs.length > 1) {
-            optionsContainer.removeChild(optionInputs[optionInputs.length - 1]);
-        }
+        return this.pollManager.pollDeleteOptions();
     }
 
     createPollInputs(poll) {
-        const safeQuestion = this.sanitizeHtml(String(poll.question ?? ''));
-        const questionInput = `<input id="swal-input-question" class="swal2-input" value="${safeQuestion}">`;
-        const optionsInputs = poll.options
-            .map((option, i) => {
-                const safeOption = this.sanitizeHtml(String(option ?? ''));
-                return `<input id="swal-input-option${i}" class="swal2-input" value="${safeOption}">`;
-            })
-            .join('');
-        return questionInput + optionsInputs;
+        return this.pollManager.createPollInputs(poll);
     }
 
     getPollOptions(optionCount) {
-        const options = [];
-        for (let i = 0; i < optionCount; i++) {
-            options.push(document.getElementById(`swal-input-option${i}`).value);
-        }
-        return options;
+        return this.pollManager.getPollOptions(optionCount);
     }
 
     pollSaveResults() {
-        const polls = document.querySelectorAll('.poll');
-        const results = [];
-
-        polls.forEach((poll, index) => {
-            const question = poll.querySelector('.poll-question').textContent;
-            const options = poll.querySelectorAll('.options div label');
-
-            const optionsText = Array.from(options).reduce((acc, option, index) => {
-                acc[index + 1] = option.textContent.trim();
-                return acc;
-            }, {});
-
-            const votersList = poll.querySelector('ul');
-            const voters = Array.from(votersList.querySelectorAll('li')).reduce((acc, li) => {
-                const [name, vote] = li.textContent.split(':').map((item) => item.trim());
-                acc[name] = vote;
-                return acc;
-            }, {});
-
-            results.push({
-                Poll: `${index + 1}`,
-                question: question,
-                options: optionsText,
-                voters: voters,
-            });
-        });
-
-        results.length > 0
-            ? saveObjToJsonFile(results, 'Poll')
-            : this.userLog('info', 'No polling data available to save', 'top-end');
+        return this.pollManager.pollSaveResults();
     }
 
     getPollFileName() {
-        const dateTime = getDataTimeStringFormat();
-        const roomName = this.room_id.trim();
-        return `Poll_${roomName}_${dateTime}.txt`;
+        return this.pollManager.getPollFileName();
     }
 
     // ####################################################
@@ -13480,5 +13183,26 @@ class RoomClient {
 
     getNotificationsData() {
         return this.followMeManager.getNotificationsData();
+    }
+
+    get isPollOpen() {
+        return this.pollManager.isPollOpen;
+    }
+    set isPollOpen(val) {
+        this.pollManager.isPollOpen = val;
+    }
+
+    get isPollPinned() {
+        return this.pollManager.isPollPinned;
+    }
+    set isPollPinned(val) {
+        this.pollManager.isPollPinned = val;
+    }
+
+    get pollSelectedOptions() {
+        return this.pollManager.pollSelectedOptions;
+    }
+    set pollSelectedOptions(val) {
+        this.pollManager.pollSelectedOptions = val;
     }
 } // End
