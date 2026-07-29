@@ -382,6 +382,11 @@ class RoomClient {
         this.isChatMaximized = false;
         this.isToggleUnreadMsg = false;
         this.isToggleRaiseHand = false;
+        // ModeratorManager properties (moved here for global accessibility)
+        this.chatPeerId = null; // Used by ModeratorManager for chat, kept here as it's shared with Chat feature
+        this.chatPeerName = null; // Used by ModeratorManager for chat, kept here as it's shared with Chat feature
+        this.chatPeerAvatar = null; // Used by ModeratorManager for chat, kept here as it's shared with Chat feature
+        this.unreadMessageCounts = {}; // Used by ModeratorManager for chat, kept here as it's shared with Chat feature
 
         this.pinnedVideoPlayerId = null;
         this.camVideo = false;
@@ -467,6 +472,7 @@ class RoomClient {
         this.pollManager = new PollManager(this);
         this.editorManager = new EditorManager(this);
         this.rtmpManager = new RTMPManager(this);
+        this.moderatorManager = new ModeratorManager(this);
 
         this.videoProducerId = null;
         this.screenProducerId = null;
@@ -1795,12 +1801,12 @@ class RoomClient {
 
     handleUpdateRoomModeratorData = (data) => {
         console.log('SocketOn Update room moderator', data);
-        this.handleUpdateRoomModerator(data);
+        this.moderatorManager.handleUpdateRoomModerator(data);
     };
 
     handleUpdateRoomModeratorALLData = (data) => {
         console.log('SocketOn Update room moderator ALL', data);
-        this.handleUpdateRoomModeratorALL(data);
+        this.moderatorManager.handleUpdateRoomModeratorALL(data);
     };
 
     handleRecordingActionData = (data) => {
@@ -4444,7 +4450,7 @@ class RoomClient {
     exitRoom(disconnectAll = false) {
         const switchDisconnectAllOnLeave = getId('switchDisconnectAllOnLeave');
         if (isPresenter && (disconnectAll || (switchDisconnectAllOnLeave && switchDisconnectAllOnLeave.checked))) {
-            this.ejectAllOnLeave();
+            this.moderatorManager.ejectAllOnLeave();
         }
         this.exit();
     }
@@ -4454,13 +4460,7 @@ class RoomClient {
     // ####################################################
 
     ejectAllOnLeave() {
-        const cmd = {
-            type: 'ejectAll',
-            peer_name: this.peer_name,
-            peer_uuid: this.peer_uuid,
-            broadcast: true,
-        };
-        this.emitCmd(cmd);
+        return this.moderatorManager.ejectAllOnLeave();
     }
 
     // ####################################################
@@ -11046,30 +11046,11 @@ class RoomClient {
     }
 
     toggleCoHost(peerId) {
-        const peerData = this.peers && this.peers.get(peerId);
-        const isCurrentlyCoHost = peerData?.peer_info?.peer_cohost || false;
-        if (isCurrentlyCoHost) {
-            this.socket.emit('removeCoHost', { peerId });
-        } else {
-            this.socket.emit('makeCoHost', { peerId });
-        }
+        return this.moderatorManager.toggleCoHost(peerId);
     }
 
     peerGuestNotAllowed(action) {
-        console.log('peerGuestNotAllowed', action);
-        switch (action) {
-            case 'audio':
-                this.userLog('warning', 'Only the presenter or co-host can mute/unmute participants', 'top-end');
-                break;
-            case 'video':
-                this.userLog('warning', 'Only the presenter or co-host can hide/show participants', 'top-end');
-                break;
-            case 'screen':
-                this.userLog('warning', 'Only the presenter or co-host can start/stop the screen of participants', 'top-end');
-                break;
-            default:
-                break;
-        }
+        return this.moderatorManager.peerGuestNotAllowed(action);
     }
 
     // ####################################################
@@ -11077,22 +11058,7 @@ class RoomClient {
     // ####################################################
 
     searchPeer() {
-        const searchParticipantsFromList = this.getId('searchParticipantsFromList');
-        const searchFilter = (searchParticipantsFromList?.value || '').toUpperCase();
-        const participantsList = this.getId('participantsList');
-        const participantsListItems = Array.from(participantsList?.children || []).filter(
-            (item) => item.tagName === 'LI'
-        );
-
-        for (const li of participantsListItems) {
-            const participantName = (
-                li.getAttribute('data-to-name') ||
-                li.querySelector('.name')?.textContent ||
-                ''
-            ).toUpperCase();
-            const shouldDisplay = participantName.includes(searchFilter);
-            li.style.display = shouldDisplay ? '' : 'none';
-        }
+        return this.moderatorManager.searchPeer();
     }
 
     // ####################################################
@@ -11100,17 +11066,7 @@ class RoomClient {
     // ####################################################
 
     toggleRaiseHands() {
-        const participantsList = this.getId('participantsList');
-        const participantsListItems = participantsList.getElementsByTagName('li');
-
-        for (let i = 0; i < participantsListItems.length; i++) {
-            const li = participantsListItems[i];
-            const hasPulsateClass = li.querySelector('i.pulsate') !== null;
-            const shouldDisplay = (hasPulsateClass && !this.isToggleRaiseHand) || this.isToggleRaiseHand;
-            li.style.display = shouldDisplay ? '' : 'none';
-        }
-        this.isToggleRaiseHand = !this.isToggleRaiseHand;
-        setColor(participantsRaiseHandBtn, this.isToggleRaiseHand ? '#FFD700' : 'white');
+        return this.moderatorManager.toggleRaiseHands();
     }
 
     // ####################################################
@@ -11118,17 +11074,7 @@ class RoomClient {
     // ####################################################
 
     toggleUnreadMsg() {
-        const participantsList = this.getId('participantsList');
-        const participantsListItems = participantsList.getElementsByTagName('li');
-
-        for (let i = 0; i < participantsListItems.length; i++) {
-            const li = participantsListItems[i];
-            const shouldDisplay =
-                (li.classList.contains('pulsate') && !this.isToggleUnreadMsg) || this.isToggleUnreadMsg;
-            li.style.display = shouldDisplay ? '' : 'none';
-        }
-        this.isToggleUnreadMsg = !this.isToggleUnreadMsg;
-        setColor(participantsUnreadMessagesBtn, this.isToggleUnreadMsg ? 'lime' : 'white');
+        return this.moderatorManager.toggleUnreadMsg();
     }
 
     // ####################################################
@@ -11138,16 +11084,16 @@ class RoomClient {
     showPeerAboutAndMessages(peer_id, peer_name, peer_avatar = false, event = null) {
         // Early moderator guards: refuse to switch (and to mutate any state) when the
         // requested chat is currently blocked by the moderator.
-        if (peer_id === 'ChatGPT' && this._moderator.chat_cant_chatgpt) {
+        if (peer_id === 'ChatGPT' && this.moderatorManager.getModerator().chat_cant_chatgpt) {
             return userLog('warning', 'The moderator does not allow you to chat with ChatGPT', 'top-end', 6000);
         }
-        if (peer_id === 'DeepSeek' && this._moderator.chat_cant_deep_seek) {
+        if (peer_id === 'DeepSeek' && this.moderatorManager.getModerator().chat_cant_deep_seek) {
             return userLog('warning', 'The moderator does not allow you to chat with DeepSeek', 'top-end', 6000);
         }
-        if (peer_id === 'all' && this._moderator.chat_cant_publicly) {
+        if (peer_id === 'all' && this.moderatorManager.getModerator().chat_cant_publicly) {
             return userLog('warning', 'The moderator does not allow you to chat publicly', 'top-end', 6000);
         }
-        if (!['all', 'ChatGPT', 'DeepSeek'].includes(peer_id) && this._moderator.chat_cant_privately) {
+        if (!['all', 'ChatGPT', 'DeepSeek'].includes(peer_id) && this.moderatorManager.getModerator().chat_cant_privately) {
             return userLog('warning', 'The moderator does not allow you to chat privately', 'top-end', 6000);
         }
 
@@ -11297,76 +11243,27 @@ class RoomClient {
     // ####################################################
 
     updateRoomModerator(data) {
-        if (!isRulesActive || isPresenter) {
-            const moderator = this.getModeratorData(data);
-            this.socket.emit('updateRoomModerator', moderator);
-        }
+        return this.moderatorManager.updateRoomModerator(data);
     }
 
     updateRoomModeratorALL(data) {
-        if (!isRulesActive || isPresenter) {
-            const moderator = this.getModeratorData(data);
-            this.socket.emit('updateRoomModeratorALL', moderator);
-        }
+        return this.moderatorManager.updateRoomModeratorALL(data);
     }
 
     getModeratorData(data) {
-        return {
-            peer_name: this.peer_name,
-            peer_uuid: this.peer_uuid,
-            moderator: data,
-        };
+        return this.moderatorManager.getModeratorData(data);
     }
 
     handleUpdateRoomModerator(data) {
-        switch (data.type) {
-            case 'audio_cant_unmute':
-                this._moderator.audio_cant_unmute = data.status;
-                this._moderator.audio_cant_unmute ? hide(tabAudioDevicesBtn) : show(tabAudioDevicesBtn);
-                rc.roomMessage('audio_cant_unmute', data.status);
-                break;
-            case 'video_cant_unhide':
-                this._moderator.video_cant_unhide = data.status;
-                this._moderator.video_cant_unhide ? hide(tabVideoDevicesBtn) : show(tabVideoDevicesBtn);
-                rc.roomMessage('video_cant_unhide', data.status);
-                break;
-            case 'screen_cant_share':
-                this._moderator.screen_cant_share = data.status;
-                rc.roomMessage('screen_cant_share', data.status);
-                break;
-            case 'chat_cant_privately':
-                this._moderator.chat_cant_privately = data.status;
-                rc.roomMessage('chat_cant_privately', data.status);
-                break;
-            case 'chat_cant_publicly':
-                this._moderator.chat_cant_publicly = data.status;
-                rc.roomMessage('chat_cant_publicly', data.status);
-                break;
-            case 'chat_cant_chatgpt':
-                this._moderator.chat_cant_chatgpt = data.status;
-                rc.roomMessage('chat_cant_chatgpt', data.status);
-                break;
-            case 'media_cant_sharing':
-                this._moderator.media_cant_sharing = data.status;
-                rc.roomMessage('media_cant_sharing', data.status);
-                break;
-            case 'polls_cant_create':
-                this._moderator.polls_cant_create = data.status;
-                rc.roomMessage('polls_cant_create', data.status);
-                break;
-            default:
-                break;
-        }
+        return this.moderatorManager.handleUpdateRoomModerator(data);
     }
 
     handleUpdateRoomModeratorALL(data) {
-        this._moderator = data;
-        console.log('Update Room Moderator data all', this._moderator);
+        return this.moderatorManager.handleUpdateRoomModeratorALL(data);
     }
 
     getModerator() {
-        console.log('Get Moderator', this._moderator);
-        return this._moderator;
+        return this.moderatorManager.getModerator();
     }
 
 
