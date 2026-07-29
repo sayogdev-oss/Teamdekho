@@ -473,6 +473,7 @@ class RoomClient {
         this.editorManager = new EditorManager(this);
         this.rtmpManager = new RTMPManager(this);
         this.moderatorManager = new ModeratorManager(this);
+        this.recordingManager = new RecordingManager(this);
 
         this.videoProducerId = null;
         this.screenProducerId = null;
@@ -1811,7 +1812,7 @@ class RoomClient {
 
     handleRecordingActionData = (data) => {
         console.log('SocketOn Recording action:', data);
-        this.handleRecordingAction(data);
+        this.recordingManager.handleRecordingAction(data);
     };
 
     handleEndRTMP = (data) => {
@@ -7731,626 +7732,143 @@ class RoomClient {
     // ####################################################
 
     popupRecordingOnLeaveRoom() {
-        Swal.fire({
-            background: swalBackground,
-            position: 'center',
-            imageUrl: image.recording,
-            title: 'Recording is ON',
-            html: renderRoomTemplate('popupRecordingOnLeaveRoomTemplate'),
-            confirmButtonText: 'OK',
-            showClass: { popup: 'animate__animated animate__fadeInDown' },
-            hideClass: { popup: 'animate__animated animate__fadeOutUp' },
-        }).then((result) => {
-            if (result.isConfirmed) {
-                survey && survey.enabled ? leaveFeedback(true) : redirectOnLeave();
-            }
-        });
+        return this.recordingManager.popupRecordingOnLeaveRoom();
     }
 
     showRecServerSideAdvice() {
-        Swal.fire({
-            background: swalBackground,
-            position: 'center',
-            imageUrl: image.recording,
-            title: 'Server Sync Recording Enabled',
-            html: renderRoomTemplate('popupRecordingServerAdviceTemplate'),
-            showDenyButton: true,
-            confirmButtonText: 'OK',
-            denyButtonText: 'Switch Off',
-            showClass: { popup: 'animate__animated animate__fadeInDown' },
-            hideClass: { popup: 'animate__animated animate__fadeOutUp' },
-        }).then((result) => {
-            if (result.isDenied) {
-                switchServerRecording.checked = false;
-            }
-        });
+        return this.recordingManager.showRecServerSideAdvice();
     }
 
     toggleVideoAudioTabs(disabled = false) {
-        tabAudioDevicesBtn.disabled = disabled;
-        tabVideoDevicesBtn.disabled = disabled;
+        return this.recordingManager.toggleVideoAudioTabs(disabled);
     }
 
     handleRecordingError(error, popupLog = true) {
-        this.toggleVideoAudioTabs(false);
-        console.error('Recording error', error);
-        if (popupLog) this.userLog('error', error, 'top-end', 6000);
+        return this.recordingManager.handleRecordingError(error, popupLog);
     }
 
     getSupportedMimeTypes() {
-        const possibleTypes = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/mp4'];
-        console.log('POSSIBLE CODECS', possibleTypes);
-        return possibleTypes.filter((mimeType) => {
-            return MediaRecorder.isTypeSupported(mimeType);
-        });
+        return this.recordingManager.getSupportedMimeTypes();
     }
 
     startRecording() {
-        recordedBlobs = [];
-
-        // Toggle Video/Audio tabs
-        this.toggleVideoAudioTabs(true);
-
-        // Get supported MIME types and set options
-        const supportedMimeTypes = this.getSupportedMimeTypes();
-        console.log('MediaRecorder supported options', supportedMimeTypes);
-        const options = { mimeType: supportedMimeTypes[0] };
-
-        recCodecs = supportedMimeTypes[0];
-
-        try {
-            this.audioRecorder = new MixedAudioRecorder();
-            const audioStreams = this.getAudioStreamFromAudioElements();
-            console.log('Audio streams tracks --->', audioStreams.getTracks());
-
-            const audioMixerStreams = this.audioRecorder.getMixedAudioStream(
-                audioStreams
-                    .getTracks()
-                    .filter((track) => track.kind === 'audio')
-                    .map((track) => new MediaStream([track]))
-            );
-
-            const audioMixerTracks = audioMixerStreams.getTracks();
-            console.log('Audio mixer tracks --->', audioMixerTracks);
-
-            this.isMobileDevice
-                ? this.startMobileRecording(options, audioMixerTracks)
-                : this.recordingOptions(options, audioMixerTracks);
-        } catch (err) {
-            this.handleRecordingError('Exception while creating MediaRecorder: ' + err);
-        }
+        return this.recordingManager.startRecording();
     }
 
     recordingOptions(options, audioMixerTracks) {
-        Swal.fire({
-            background: swalBackground,
-            position: 'top',
-            imageUrl: image.recording,
-            title: 'Recording options',
-            text: 'Select the recording type you want to start. Audio will be recorded from all participants.',
-            showDenyButton: true,
-            showCancelButton: true,
-            cancelButtonColor: 'red',
-            denyButtonColor: 'green',
-            confirmButtonText: `Camera`,
-            denyButtonText: `Screen/Window`,
-            cancelButtonText: `Cancel`,
-            showClass: { popup: 'animate__animated animate__fadeInDown' },
-            hideClass: { popup: 'animate__animated animate__fadeOutUp' },
-        }).then((result) => {
-            if (result.isConfirmed) {
-                this.startMobileRecording(options, audioMixerTracks);
-            } else if (result.isDenied) {
-                this.startDesktopRecording(options, audioMixerTracks);
-            }
-        });
+        return this.recordingManager.recordingOptions(options, audioMixerTracks);
     }
 
     startMobileRecording(options, audioMixerTracks) {
-        try {
-            // Combine audioMixerTracks and videoTracks into a single array
-            const combinedTracks = [];
-
-            if (Array.isArray(audioMixerTracks)) {
-                combinedTracks.push(...audioMixerTracks);
-            }
-
-            if (this.localVideoStream !== null) {
-                const videoTracks = this.localVideoStream.getVideoTracks();
-                console.log('Cam video tracks --->', videoTracks);
-
-                if (Array.isArray(videoTracks)) {
-                    combinedTracks.push(...videoTracks);
-                }
-            }
-
-            const recCamStream = new MediaStream(combinedTracks);
-            console.log('New Cam Media Stream tracks  --->', recCamStream.getTracks());
-
-            this.mediaRecorder = new MediaRecorder(recCamStream, options);
-            console.log('Created MediaRecorder', this.mediaRecorder, 'with options', options);
-
-            this.getId('swapCameraButton').className = 'hidden';
-
-            this.initRecording();
-        } catch (err) {
-            this.handleRecordingError('Unable to record the camera + audio: ' + err, false);
-        }
+        return this.recordingManager.startMobileRecording(options, audioMixerTracks);
     }
 
     startDesktopRecording(options, audioMixerTracks) {
-        // On desktop devices, record camera or screen/window... + all audio tracks
-        const constraints = { video: true };
-        navigator.mediaDevices
-            .getDisplayMedia(constraints)
-            .then((screenStream) => {
-                const screenTracks = screenStream.getVideoTracks();
-                console.log('Screen video tracks --->', screenTracks);
-
-                const combinedTracks = [];
-
-                if (Array.isArray(screenTracks)) {
-                    combinedTracks.push(...screenTracks);
-                }
-                if (Array.isArray(audioMixerTracks)) {
-                    combinedTracks.push(...audioMixerTracks);
-                }
-
-                const recScreenStream = new MediaStream(combinedTracks);
-                console.log('New Screen/Window Media Stream tracks  --->', recScreenStream.getTracks());
-
-                this.recScreenStream = recScreenStream;
-                this.mediaRecorder = new MediaRecorder(recScreenStream, options);
-                console.log('Created MediaRecorder', this.mediaRecorder, 'with options', options);
-
-                this.initRecording();
-            })
-            .catch((err) => {
-                this.handleRecordingError('Unable to record the screen + audio: ' + err, false);
-            });
+        return this.recordingManager.startDesktopRecording(options, audioMixerTracks);
     }
 
     initRecording() {
-        this._isRecording = true;
-        this.handleMediaRecorder();
-        this.event(_EVENTS.startRec);
-        this.recordingAction(enums.recording.start);
-        this.sound('recStart');
+        return this.recordingManager.initRecording();
     }
 
     hasAudioTrack(mediaStream) {
-        if (!mediaStream) return false;
-        const audioTracks = mediaStream.getAudioTracks();
-        return audioTracks.length > 0;
+        return this.recordingManager.hasAudioTrack(mediaStream);
     }
 
     hasVideoTrack(mediaStream) {
-        if (!mediaStream) return false;
-        const videoTracks = mediaStream.getVideoTracks();
-        return videoTracks.length > 0;
+        return this.recordingManager.hasVideoTrack(mediaStream);
     }
 
     getAudioTracksFromAudioElements() {
-        const audioElements = document.querySelectorAll('audio');
-        const audioTracks = [];
-        audioElements.forEach((audio) => {
-            // Exclude avatar Preview Audio and local producer audio (already captured via mic)
-            if (audio.id !== 'avatarPreviewAudio' && audio.getAttribute('name') !== 'LOCAL-AUDIO') {
-                const audioTrack = audio.srcObject?.getAudioTracks()[0];
-                if (audioTrack) {
-                    audioTracks.push(audioTrack);
-                }
-            }
-        });
-        return audioTracks;
+        return this.recordingManager.getAudioTracksFromAudioElements();
     }
 
     getAudioStreamFromAudioElements() {
-        const audioElements = document.querySelectorAll('audio');
-        const audioStream = new MediaStream();
-        audioElements.forEach((audio) => {
-            // Exclude avatar Preview Audio
-            if (audio.id === 'avatarPreviewAudio') return;
-            const audioTrack = audio.srcObject?.getAudioTracks()[0];
-            if (audioTrack) {
-                audioStream.addTrack(audioTrack);
-            }
-        });
-        // Also include the local microphone track so solo recordings have audio
-        if (this.localAudioStream) {
-            const micTrack = this.localAudioStream.getAudioTracks()[0];
-            if (micTrack) {
-                audioStream.addTrack(micTrack);
-            }
-        }
-        return audioStream;
+        return this.recordingManager.getAudioStreamFromAudioElements();
     }
 
     handleMediaRecorder() {
-        if (this.mediaRecorder) {
-            this.recServerFileName = this.getServerRecFileName();
-            this.mediaRecorder.addEventListener('start', this.handleMediaRecorderStart);
-            this.mediaRecorder.addEventListener('dataavailable', this.handleMediaRecorderData);
-            this.mediaRecorder.addEventListener('stop', this.handleMediaRecorderStop);
-            // Always pass a timeslice so the browser flushes encoded chunks periodically
-            // instead of buffering the entire recording in renderer memory.
-            // - Server sync: 4 s chunks → fewer HTTP POSTs to /recSync.
-            // - Local blob: 1 s chunks → faster internal flush, lighter recorder buffer.
-            rc.recording.recSyncServerRecording
-                ? this.mediaRecorder.start(this.recSyncTime)
-                : this.mediaRecorder.start(1000);
-        }
+        return this.recordingManager.handleMediaRecorder();
     }
 
     generateUUIDv4() {
-        return ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, (c) =>
-            (c ^ (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (c / 4)))).toString(16)
-        );
+        return this.recordingManager.generateUUIDv4();
     }
 
     getServerRecFileName() {
-        const roomName = this.room_id.trim();
-        const dateTime = getDataTimeStringFormat();
-        const uuid = this.generateUUIDv4();
-        return `Rec_${roomName}_${dateTime}_${uuid}.webm`;
+        return this.recordingManager.getServerRecFileName();
     }
 
     handleMediaRecorderStart(evt) {
-        console.log('MediaRecorder started: ', evt);
-        rc.cleanLastRecordingInfo();
-        rc.disableRecordingOptions();
-        rc._recStartTs = performance.now();
+        return this.recordingManager.handleMediaRecorderStart(evt);
     }
 
     handleMediaRecorderData(evt) {
-        // console.log('MediaRecorder data: ', evt);
-        if (evt.data && evt.data.size > 0) {
-            rc.recording.recSyncServerRecording ? rc.syncRecordingInCloud(evt.data) : recordedBlobs.push(evt.data);
-        }
+        return this.recordingManager.handleMediaRecorderData(evt);
     }
 
     async syncRecordingInCloud(data) {
-        const arrayBuffer = await data.arrayBuffer();
-        const chunkSize = rc.recSyncChunkSize;
-        const totalChunks = Math.ceil(arrayBuffer.byteLength / chunkSize);
-        for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
-            const chunk = arrayBuffer.slice(chunkIndex * chunkSize, (chunkIndex + 1) * chunkSize);
-            try {
-                const response = await axios.post(
-                    `${this.recording.recSyncServerEndpoint}/recSync?fileName=` + rc.recServerFileName,
-                    chunk,
-                    {
-                        headers: {
-                            'Content-Type': 'application/octet-stream',
-                        },
-                    }
-                );
-                console.log('Chunk synced successfully:', response.data);
-            } catch (error) {
-                let errorMessage = 'Recording stopped! ';
-                if (error.response) {
-                    errorMessage += error.response.data.message;
-                    console.error('Error syncing chunk', {
-                        status_code: error.response.status,
-                        response_data: error.response.data,
-                        response_headers: error.response.headers,
-                    });
-                } else if (error.request) {
-                    console.error('Error syncing chunk: No response received', { request_details: error.request });
-                } else {
-                    errorMessage += error.message;
-                    console.error('Error syncing chunk:', error.message);
-                }
-                userLog('warning', errorMessage, 'top-end', 3000);
-                rc.stopRecording();
-                rc.saveLastRecordingInfo('<br/><span class="red">' + errorMessage + '.</span>');
-            }
-        }
+        return this.recordingManager.syncRecordingInCloud(data);
     }
 
     async handleMediaRecorderStop(evt) {
-        try {
-            console.log('MediaRecorder stopped: ', evt);
-            rc.recording.recSyncServerRecording ? rc.handleServerRecordingStop() : rc.handleLocalRecordingStop();
-            rc.disableRecordingOptions(false);
-
-            // If cloud sync is enabled, patch duration on the server
-            if (rc.recording.recSyncServerRecording) {
-                const durationMs = rc._recStartTs ? Math.round(performance.now() - rc._recStartTs) : undefined;
-
-                // Option S3: pass duration to your existing finalize endpoint (preferred if it uploads to S3)
-                if (rc.recording.recSyncServerToS3) {
-                    try {
-                        await axios.post(`${rc.recording.recSyncServerEndpoint}/recSyncFinalize`, null, {
-                            params: { fileName: rc.recServerFileName, durationMs },
-                        });
-                        console.log('Finalized (with duration fix) and uploaded to S3');
-                        if (recShowInfo) userLog('success', 'Recording successfully uploaded to S3.', 'top-end', 3000);
-                    } catch (error) {
-                        let errorMessage = 'Finalization failed! ';
-                        if (error.response) errorMessage += error.response.data?.message || 'Server error';
-                        else if (error.request) errorMessage += 'No response from server';
-                        else errorMessage += error.message;
-                        if (recShowInfo) userLog('warning', errorMessage, 'top-end', 3000);
-                    }
-                } else {
-                    // Option Disk: if you don’t use S3 finalize, call a dedicated “fix” endpoint
-                    try {
-                        await axios.post(`${rc.recording.recSyncServerEndpoint}/recSyncFixWebm`, null, {
-                            params: { fileName: rc.recServerFileName, durationMs },
-                        });
-                        console.log('Server-side WEBM duration fixed for', rc.recServerFileName);
-                    } catch (error) {
-                        console.warn('WEBM duration server-side fix failed:', error?.message || error);
-                    }
-                }
-
-                rc._recStartTs = null;
-            }
-        } catch (err) {
-            console.error('Recording save failed', err);
-        }
-    }
-
-    async handleMediaRecorderStopOLD(evt) {
-        try {
-            console.log('MediaRecorder stopped: ', evt);
-            rc.recording.recSyncServerRecording ? rc.handleServerRecordingStop() : rc.handleLocalRecordingStop();
-            rc.disableRecordingOptions(false);
-
-            // Only do this if cloud sync was enabled and upload to s3
-            if (rc.recording.recSyncServerRecording && rc.recording.recSyncServerToS3) {
-                try {
-                    const response = await axios.post(
-                        `${rc.recording.recSyncServerEndpoint}/recSyncFinalize?fileName=` + rc.recServerFileName
-                    );
-                    console.log('Finalized and uploaded to S3:', response.data);
-                    userLog('success', 'Recording successfully uploaded to S3.', 'top-end', 3000);
-                } catch (error) {
-                    let errorMessage = 'Finalization failed! ';
-                    if (error.response) {
-                        errorMessage += error.response.data?.message || 'Server error';
-                        console.error('Finalization error response:', error.response);
-                    } else if (error.request) {
-                        errorMessage += 'No response from server';
-                        console.error('Finalization error: No response', error.request);
-                    } else {
-                        errorMessage += error.message;
-                        console.error('Finalization error:', error.message);
-                    }
-                    userLog('warning', errorMessage, 'top-end', 3000);
-                }
-            }
-        } catch (err) {
-            console.error('Recording save failed', err);
-        }
+        return this.recordingManager.handleMediaRecorderStop(evt);
     }
 
     disableRecordingOptions(disabled = true) {
-        switchServerRecording.disabled = disabled;
-        switchHostOnlyRecording.disabled = disabled;
+        return this.recordingManager.disableRecordingOptions(disabled);
     }
 
     getWebmFixerFn() {
-        const fn = window.FixWebmDuration;
-        return typeof fn === 'function' ? fn : null;
+        return this.recordingManager.getWebmFixerFn();
     }
 
     handleLocalRecordingStop() {
-        console.log('MediaRecorder Blobs: ', recordedBlobs);
-
-        const dateTime = getDataTimeString();
-        const type = recordedBlobs[0].type.includes('mp4') ? 'mp4' : 'webm';
-        const rawBlob = new Blob(recordedBlobs, { type: 'video/' + type });
-        const recFileName = `Rec_${dateTime}.${type}`;
-        const currentDevice = this.isMobileDevice ? 'MOBILE' : 'PC';
-        const blobFileSize = bytesToSize(rawBlob.size);
-        const recTimeText = this._lastRecTimeText || '0s';
-        const recType = 'Locally';
-        const recordingInfo = `
-        <br/><br/>
-        <ul>
-            <li>Stored: ${recType}</li>
-            <li>Time: ${recTimeText}</li>
-            <li>File: ${recFileName}</li>
-            <li>Codecs: ${recCodecs}</li>
-            <li>Size: ${blobFileSize}</li>
-        </ul>
-        <br/>
-        `;
-        const recordingMsg = `Please wait to be processed, then will be downloaded to your ${currentDevice} device.`;
-
-        this.saveLastRecordingInfo(recordingInfo);
-        this.showRecordingInfo(recType, recordingInfo, recordingMsg);
-
-        // Fix WebM duration to make it seekable
-        const fixWebmDuration = async (blob) => {
-            if (type !== 'webm') return blob;
-            try {
-                const fix = this.getWebmFixerFn();
-                const durationMs = this._recStartTs ? performance.now() - this._recStartTs : undefined;
-                const fixed = await fix(blob, durationMs);
-                return fixed || blob;
-            } catch (e) {
-                console.warn('WEBM duration fix failed, saving original blob:', e);
-                return blob;
-            } finally {
-                this._recStartTs = null;
-            }
-        };
-
-        (async () => {
-            const finalBlob = await fixWebmDuration(rawBlob);
-            this.saveRecordingInLocalDevice(finalBlob, recFileName);
-        })();
+        return this.recordingManager.handleLocalRecordingStop();
     }
 
     handleServerRecordingStop() {
-        console.log('MediaRecorder Stop');
-        const recTimeText = this._lastRecTimeText || '0s';
-        const recType = 'Server';
-        const recordingInfo = `
-        <br/><br/>
-        <ul>
-            <li>Stored: ${recType}</li>
-            <li>Time: ${recTimeText}</li>
-            <li>File: ${this.recServerFileName}</li>
-            <li>Codecs: ${recCodecs}</li>
-        </ul>
-        <br/>
-        `;
-        this.saveLastRecordingInfo(recordingInfo);
-        this.showRecordingInfo(recType, recordingInfo);
+        return this.recordingManager.handleServerRecordingStop();
     }
 
     saveLastRecordingInfo(recordingInfo) {
-        const lastRecordingInfo = document.getElementById('lastRecordingInfo');
-        lastRecordingInfo.style.color = '#FFFFFF';
-        lastRecordingInfo.innerHTML = renderRoomTemplate('lastRecordingInfoTemplate', {
-            html: {
-                recordingInfo,
-            },
-        });
-        show(lastRecordingInfo);
+        return this.recordingManager.saveLastRecordingInfo(recordingInfo);
     }
 
     cleanLastRecordingInfo() {
-        const lastRecordingInfo = document.getElementById('lastRecordingInfo');
-        lastRecordingInfo.innerHTML = '';
-        hide(lastRecordingInfo);
+        return this.recordingManager.cleanLastRecordingInfo();
     }
 
     showRecordingInfo(recType, recordingInfo, recordingMsg = '') {
-        if (!recShowInfo) return;
-        if (window.localStorage.isReconnected === 'false') {
-            Swal.fire({
-                background: swalBackground,
-                position: 'top',
-                title: 'Recording',
-                html: renderRoomTemplate('popupRecordingInfoTemplate', {
-                    text: {
-                        indicator: '🔴',
-                        recType: recType,
-                        recordingMsg: recordingMsg,
-                    },
-                    html: {
-                        recordingInfo: recordingInfo,
-                    },
-                }),
-                showClass: { popup: 'animate__animated animate__fadeInDown' },
-                hideClass: { popup: 'animate__animated animate__fadeOutUp' },
-            });
-        }
+        return this.recordingManager.showRecordingInfo(recType, recordingInfo, recordingMsg);
     }
 
     saveRecordingInLocalDevice(blob, recFileName) {
-        console.log('MediaRecorder Download Blobs');
-        const url = window.URL.createObjectURL(blob);
-
-        const downloadLink = document.createElement('a');
-        downloadLink.style.display = 'none';
-        downloadLink.href = url;
-        downloadLink.download = recFileName;
-        document.body.appendChild(downloadLink);
-        downloadLink.click();
-
-        setTimeout(() => {
-            document.body.removeChild(downloadLink);
-            window.URL.revokeObjectURL(url);
-            console.log(`🔴 Recording FILE: ${recFileName} done 👍`);
-            recordedBlobs = [];
-        }, 100);
+        return this.recordingManager.saveRecordingInLocalDevice(blob, recFileName);
     }
 
     pauseRecording() {
-        if (this.mediaRecorder) {
-            this._isRecording = false;
-            this.mediaRecorder.pause();
-            this.event(_EVENTS.pauseRec);
-            this.recordingAction('Pause recording');
-        }
+        return this.recordingManager.pauseRecording();
     }
 
     resumeRecording() {
-        if (this.mediaRecorder) {
-            this._isRecording = true;
-            this.mediaRecorder.resume();
-            this.event(_EVENTS.resumeRec);
-            this.recordingAction('Resume recording');
-        }
+        return this.recordingManager.resumeRecording();
     }
 
     stopRecording() {
-        if (this.mediaRecorder) {
-            this.toggleVideoAudioTabs(false);
-            // Capture the elapsed time text BEFORE stopRec event resets it to '0s'
-            const recTimeEl = document.getElementById('recordingStatus');
-            this._lastRecTimeText = recTimeEl ? recTimeEl.innerText : '0s';
-            this._isRecording = false;
-            this.mediaRecorder.stop();
-            this.mediaRecorder = null;
-            if (this.recScreenStream) {
-                this.recScreenStream.getTracks().forEach((track) => {
-                    if (track.kind === 'video') track.stop();
-                });
-            }
-            if (this.isMobileDevice) this.getId('swapCameraButton').className = '';
-            this.event(_EVENTS.stopRec);
-            this.audioRecorder.stopMixedAudioStream();
-            this.recordingAction(enums.recording.stop);
-            this.sound('recStop');
-        }
+        return this.recordingManager.stopRecording();
     }
 
     recordingAction(action) {
-        if (!this.thereAreParticipants()) return;
-        this.socket.emit('recordingAction', {
-            peer_name: this.peer_name,
-            peer_id: this.peer_id,
-            action: action,
-        });
+        return this.recordingManager.recordingAction(action);
     }
 
     handleRecordingAction(data) {
-        console.log('Handle recording action', data);
-
-        const { peer_name, peer_avatar, peer_id, action } = data;
-
-        const recAction = {
-            side: 'left',
-            img: this.leftMsgAvatar,
-            peer_name: peer_name,
-            peer_avatar: peer_avatar,
-            peer_id: peer_id,
-            peer_msg: `🔴 ${action}`,
-            to_peer_id: 'all',
-            to_peer_name: 'all',
-        };
-        this.showMessage(recAction, false);
-
-        const recData = {
-            type: 'recording',
-            action: action,
-            peer_name: peer_name,
-        };
-
-        this.msgHTML(
-            recData,
-            null,
-            image.recording,
-            null,
-            `${icons.user} ${peer_name} 
-            <br /><br /> 
-            <span>🔴 ${action}</span>
-            <br />`
-        );
+        return this.recordingManager.handleRecordingAction(data);
     }
 
     saveRecording(reason) {
-        if (this._isRecording || this.hasActiveRecorder()) {
-            console.log(`Save recording: ${reason}`);
-            this.stopRecording();
-        }
+        return this.recordingManager.saveRecording(reason);
     }
 
     // ####################################################
