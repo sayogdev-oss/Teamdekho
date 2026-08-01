@@ -1360,7 +1360,7 @@ class RoomClient {
         this.socket.on('newProducers', this.handleNewProducers);
         this.socket.on('newDataProducer', this.handleNewDataProducer);
         this.socket.on('dataConsumerClosed', this.handleDataConsumerClosed);
-        this.socket.on('message', this.handleMessage);
+        this.socket.on('message', (data) => this.chatManager.handleMessage(data));
         this.socket.on('roomAction', this.handleRoomAction);
         this.socket.on('roomPassword', this.handleRoomPassword);
         this.socket.on('roomLobby', this.handleRoomLobby);
@@ -1709,24 +1709,7 @@ class RoomClient {
         }
     };
 
-    handleMessage = (data) => {
-        console.log('SocketOn New message:', data);
-        // Drop messages that violate the current moderator restrictions (defense-in-depth
-        // in case a peer bypasses the client-side send guards).
-        const isPublicMessage = data.to_peer_id === 'all';
-        const isAIMessage = ['ChatGPT', 'DeepSeek'].includes(data.to_peer_id);
-        if (!isAIMessage) {
-            if (isPublicMessage && this._moderator.chat_cant_publicly) {
-                console.warn('Dropping public message: disabled by moderator', data);
-                return;
-            }
-            if (!isPublicMessage && this._moderator.chat_cant_privately) {
-                console.warn('Dropping private message: disabled by moderator', data);
-                return;
-            }
-        }
-        this.showMessage(data);
-    };
+
 
     handleRoomAction = (data) => {
         console.log('SocketOn Room action:', data);
@@ -6000,1363 +5983,227 @@ class RoomClient {
     }
 
     async toggleChat(fromParticipants = false) {
-        if (!fromParticipants && !BUTTONS.main.chatButton) return;
-        const chatRoom = this.getId('chatRoom');
-        chatRoom.classList.toggle('show');
-        if (!this.isChatOpen) {
-            await getRoomParticipants();
-            hide(chatMinButton);
-
-            if (!this.isMobileDevice) {
-                BUTTONS.chat.chatMaxButton && show(chatMaxButton);
-            }
-            this.chatCenter();
-            this.sound('open');
-            this.showPeerAboutAndMessages(this.chatPeerId, this.chatPeerName, this.chatPeerAvatar);
-        }
-        isParticipantsListOpen = !isParticipantsListOpen;
-        this.isChatOpen = !this.isChatOpen;
-
-        if (!this.isChatOpen) this.isParticipantsOpen = false;
-        this.syncChatToolbarButtons();
-        this.updateUnreadCountBadge(this.chatPeerId || 'all');
-
-        if (this.isChatPinned) this.chatUnpin();
-
-        if (!this.isMobileDevice && this.isChatOpen && this.canBePinned() && isChatPinEnabled) {
-            this.toggleChatPin();
-        }
-
-        resizeChatRoom();
+        return this.chatManager.toggleChat(fromParticipants);
     }
 
     updateChatFooterVisibility() {
-        const chatFooter = document.querySelector('.chat-message');
-        const peopleList = document.querySelector('#plist') || document.querySelector('.people-list');
-        if (!chatFooter || !peopleList) return;
-        const isFullWidth = window.innerWidth <= 600 && peopleList.offsetWidth >= window.innerWidth * 0.98;
-        elemDisplay(chatFooter, !isFullWidth);
+        return this.chatManager.updateChatFooterVisibility();
     }
 
     toggleShowParticipants(fromUser = false) {
-        const plist = this.getId('plist');
-        const chat = this.getId('chat');
-        plist.classList.toggle('hidden');
-        const isParticipantsListHidden = !this.isPlistOpen();
-
-        if (!BUTTONS.main.chatButton) {
-            elemDisplay(chat.id, false);
-            if (isParticipantsListHidden && fromUser) {
-                // User clicked X button: close the entire chat panel
-                if (this.isChatOpen) this.toggleChat(true);
-            } else if (!isParticipantsListHidden) {
-                // Opening participants: show plist full-width
-                plist.style.width = '100%';
-                plist.style.position = this.isMobileDevice ? 'fixed' : 'absolute';
-            }
-            this.updateChatFooterVisibility();
-            return;
-        }
-
-        chat.style.marginLeft = isParticipantsListHidden ? 0 : '300px';
-        chat.style.borderLeft = isParticipantsListHidden ? 'none' : '1px solid rgba(255, 255, 255, 0.08)';
-        if (this.isChatPinned) elemDisplay(chat.id, isParticipantsListHidden);
-        if (!this.isChatPinned) elemDisplay(chat.id, true);
-        this.toggleChatHistorySize(isParticipantsListHidden && (this.isChatPinned || this.isChatMaximized));
-        plist.style.width = this.isChatPinned || this.isMobileDevice ? '100%' : '300px';
-        plist.style.position = this.isMobileDevice ? 'fixed' : 'absolute';
-        this.updateChatFooterVisibility();
+        return this.chatManager.toggleShowParticipants(fromUser);
     }
 
     async toggleParticipants() {
-        this.isParticipantsOpen = !this.isParticipantsOpen;
-        this.syncChatToolbarButtons();
-        if (!this.isParticipantsOpen && this.isChatOpen) {
-            this.toggleChat(true);
-            return;
-        }
-        if (!this.isChatOpen) {
-            await this.toggleChat(true);
-            if (!BUTTONS.main.chatButton) {
-                elemDisplay('chat', false);
-            }
-        }
-        if ((isDesktopDevice && this.isChatPinned) || !isDesktopDevice) {
-            this.toggleShowParticipants();
-        }
+        return this.chatManager.toggleParticipants();
     }
 
     syncChatToolbarButtons() {
-        const participantsActive = !!this.isParticipantsOpen && !!this.isChatOpen;
-        const chatActive = !!this.isChatOpen && !participantsActive;
-
-        const chatBtn = document.getElementById('chatButton');
-        if (chatBtn) {
-            chatBtn.classList.toggle('is-active', chatActive);
-            chatBtn.setAttribute('aria-pressed', chatActive ? 'true' : 'false');
-        }
-        const pBtn = document.getElementById('participantsButton');
-        if (pBtn) {
-            pBtn.classList.toggle('is-active', participantsActive);
-            pBtn.setAttribute('aria-pressed', participantsActive ? 'true' : 'false');
-        }
+        return this.chatManager.syncChatToolbarButtons();
     }
 
     toggleChatHistorySize(max = true) {
-        const chatHistory = this.getId('chatHistory');
-        chatHistory.style.minHeight = max ? 'calc(100vh - 270px)' : '430px';
-        chatHistory.style.maxHeight = max ? 'calc(100vh - 270px)' : '430px';
+        return this.chatManager.toggleChatHistorySize(max);
     }
 
     toggleChatPin() {
-        if (transcription.isPin()) {
-            return userLog('info', 'Please unpin the transcription that appears to be currently pinned', 'top-end');
-        }
-        if (this.isPollPinned) {
-            return userLog('info', 'Please unpin the poll that appears to be currently pinned', 'top-end');
-        }
-        if (this.isEditorPinned) {
-            return userLog('info', 'Please unpin the editor that appears to be currently pinned', 'top-end');
-        }
-        if (this.isBreakoutPinned) {
-            return userLog('info', 'Please unpin the breakout rooms that appears to be currently pinned', 'top-end');
-        }
-        this.isChatPinned ? this.chatUnpin() : this.chatPin();
-        this.sound('click');
+        return this.chatManager.toggleChatPin();
     }
 
     chatMaximize() {
-        this.isChatMaximized = true;
-        hide(chatMaxButton);
-        BUTTONS.chat.chatMaxButton && show(chatMinButton);
-        this.chatCenter();
-        document.documentElement.style.setProperty('--msger-width', '100%');
-        document.documentElement.style.setProperty('--msger-height', '100%');
-        this.toggleChatHistorySize(true);
+        return this.chatManager.chatMaximize();
     }
 
     chatMinimize() {
-        this.isChatMaximized = false;
-        hide(chatMinButton);
-        BUTTONS.chat.chatMaxButton && show(chatMaxButton);
-        if (this.isChatPinned) {
-            this.chatPin();
-        } else {
-            this.chatCenter();
-            document.documentElement.style.setProperty('--msger-width', '800px');
-            document.documentElement.style.setProperty('--msger-height', '700px');
-            this.toggleChatHistorySize(false);
-        }
+        return this.chatManager.chatMinimize();
     }
 
     canBePinned() {
-        const viewportWidth = window.innerWidth;
-        const viewportHeight = window.innerHeight;
-        return viewportWidth >= 1024 && viewportHeight >= 768;
+        return this.chatManager.canBePinned();
     }
 
     chatPin() {
-        if (!this.isVideoPinned) {
-            this.videoMediaContainerPin();
-        }
-        if (chatRoom.classList.contains('container')) chatRoom.classList.remove('container');
-        this.chatPinned();
-        this.isChatPinned = true;
-        setColor(chatTogglePin, 'lime');
-        this.resizeVideoMenuBar();
-        resizeVideoMedia();
-        chatRoom.style.resize = 'none';
-        if (!this.isMobileDevice) this.makeUnDraggable(chatRoom, chatHeader);
-        if (this.isPlistOpen()) this.toggleShowParticipants();
+        return this.chatManager.chatPin();
     }
 
     chatUnpin() {
-        if (!this.isVideoPinned) {
-            this.videoMediaContainerUnpin();
-        }
-        chatRoom.classList.remove('panel-slide-in');
-        document.documentElement.style.setProperty('--msger-width', '800px');
-        document.documentElement.style.setProperty('--msger-height', '700px');
-        hide(chatMinButton);
-        BUTTONS.chat.chatMaxButton && show(chatMaxButton);
-        this.chatCenter();
-        this.isChatPinned = false;
-        setColor(chatTogglePin, 'white');
-        this.resizeVideoMenuBar();
-        resizeVideoMedia();
-        if (!this.isMobileDevice) this.makeDraggable(chatRoom, chatHeader);
-        if (!this.isPlistOpen()) this.toggleShowParticipants();
-        if (!chatRoom.classList.contains('container')) chatRoom.classList.add('container');
-        resizeChatRoom();
+        return this.chatManager.chatUnpin();
     }
 
     chatCenter() {
-        chatRoom.style.position = 'fixed';
-        chatRoom.style.transform = 'translate(-50%, -50%)';
-        chatRoom.style.top = '50%';
-        chatRoom.style.left = '50%';
+        return this.chatManager.chatCenter();
     }
 
     chatPinned() {
-        chatRoom.style.position = 'absolute';
-        chatRoom.style.top = 0;
-        chatRoom.style.right = 0;
-        chatRoom.style.left = null;
-        chatRoom.style.transform = null;
-        document.documentElement.style.setProperty('--msger-width', '25%');
-        document.documentElement.style.setProperty('--msger-height', '100%');
-        chatRoom.classList.remove('panel-slide-in');
-        void chatRoom.offsetWidth; // force reflow so the animation always restarts
-        chatRoom.classList.add('panel-slide-in');
+        return this.chatManager.chatPinned();
     }
 
     toggleChatEmoji() {
-        this.getId('chatEmoji').classList.toggle('show');
-        this.isChatEmojiOpen = !this.isChatEmojiOpen;
-        this.getId('chatEmojiButton').style.color = this.isChatEmojiOpen ? '#FFFF00' : '#FFFFFF';
+        return this.chatManager.toggleChatEmoji();
     }
 
     addEmojiToMsg(data) {
-        msgerInput.value += data.native;
-        toggleChatEmoji();
+        return this.chatManager.addEmojiToMsg(data);
     }
 
     cleanMessage() {
-        chatMessage.value = '';
-        chatMessage.setAttribute('rows', '1');
-        const charCount = this.getId('chatCharCount');
-        if (charCount) charCount.textContent = '0 / 4000';
+        return this.chatManager.cleanMessage();
     }
 
     pasteMessage() {
-        navigator.clipboard
-            .readText()
-            .then((text) => {
-                chatMessage.value += text;
-                isChatPasteTxt = true;
-                this.checkLineBreaks();
-            })
-            .catch((err) => {
-                console.error('Failed to read clipboard contents: ', err);
-            });
+        return this.chatManager.pasteMessage();
     }
 
     sendMessage() {
-        if (!this.thereAreParticipants() && !isChatGPTOn && !isDeepSeekOn && !(VideoAI.enabled && VideoAI.active)) {
-            this.cleanMessage();
-            isChatPasteTxt = false;
-            return this.userLog('info', 'No participants in the room', 'top-end');
-        }
-
-        // Prevent long messages
-        if (this.chatMessageLengthCheck && chatMessage.value.length > this.chatMessageLength) {
-            return this.userLog(
-                'warning',
-                `The message seems too long, with a maximum of ${this.chatMessageLength} characters allowed`,
-                'top-end'
-            );
-        }
-
-        // Spamming detected ban the user from the room
-        if (this.chatMessageSpamCount == this.chatMessageSpamCountToBan) {
-            return this.roomAction('isBanned', true);
-        }
-
-        // Prevent Spam messages
-        const currentTime = Date.now();
-        if (chatMessage.value && currentTime - this.chatMessageTimeLast <= this.chatMessageTimeBetween) {
-            this.cleanMessage();
-            chatMessage.readOnly = true;
-            chatSendButton.disabled = true;
-            setTimeout(function () {
-                chatMessage.readOnly = false;
-                chatSendButton.disabled = false;
-            }, this.chatMessageNotifyDelay);
-            this.chatMessageSpamCount++;
-            return this.userLog(
-                'warning',
-                `Kindly refrain from spamming. Please wait ${this.chatMessageNotifyDelay / 1000} seconds before sending another message`,
-                'top-end',
-                this.chatMessageNotifyDelay
-            );
-        }
-        this.chatMessageTimeLast = currentTime;
-
-        chatMessage.value = filterXSS(chatMessage.value.trim());
-        const peer_msg = this.formatMsg(chatMessage.value);
-        if (!peer_msg) {
-            return this.cleanMessage();
-        }
-        this.peer_name = filterXSS(this.peer_name);
-
-        const msg_id = `${this.peer_id}_${Date.now()}`;
-        const data = {
-            room_id: this.room_id,
-            peer_name: this.peer_name,
-            peer_avatar: this.peer_avatar,
-            peer_id: this.peer_id,
-            to_peer_id: '',
-            to_peer_name: '',
-            peer_msg: peer_msg,
-            msg_id: msg_id,
-        };
-
-        if (isChatGPTOn) {
-            if (this._moderator.chat_cant_chatgpt) {
-                this.cleanMessage();
-                return this.userLog(
-                    'warning',
-                    'The moderator does not allow you to chat with ChatGPT',
-                    'top-end',
-                    6000
-                );
-            }
-            // If VideoAI is active and ChatGPT interaction is off (toggled or disabled), speak via avatar instead
-            if (VideoAI.enabled && VideoAI.active && !VideoAI.useChatGPT) {
-                this.setMsgAvatar('left', this.peer_name, this.peer_avatar);
-                this.appendMessage(
-                    'left',
-                    this.leftMsgAvatar,
-                    this.peer_name,
-                    this.peer_id,
-                    peer_msg,
-                    'ChatGPT',
-                    'ChatGPT'
-                );
-                this.cleanMessage();
-                this.streamingTask(peer_msg);
-                return;
-            }
-
-            data.to_peer_id = 'ChatGPT';
-            data.to_peer_name = 'ChatGPT';
-            console.log('Send message:', data);
-            this.socket.emit('message', data);
-            this.setMsgAvatar('left', this.peer_name, this.peer_avatar);
-            this.appendMessage(
-                'left',
-                this.leftMsgAvatar,
-                this.peer_name,
-                this.peer_id,
-                peer_msg,
-                data.to_peer_id,
-                data.to_peer_name
-            );
-            this.cleanMessage();
-
-            this.showAITypingIndicator('ChatGPT');
-
-            this.socket
-                .request('getChatGPT', {
-                    time: getDataTimeString(),
-                    room: this.room_id,
-                    name: this.peer_name,
-                    prompt: peer_msg,
-                    context: this.chatGPTContext,
-                })
-                .then((completion) => {
-                    this.hideAITypingIndicator('ChatGPT');
-                    if (!completion) return;
-                    const { message, context } = completion;
-                    this.chatGPTContext = context ? context : [];
-                    console.log('Receive message:', message);
-                    this.setMsgAvatar('right', 'ChatGPT');
-                    this.appendMessage('right', image.chatgpt, 'ChatGPT', this.peer_id, message, 'ChatGPT', 'ChatGPT');
-                    this.cleanMessage();
-                    this.streamingTask(message); // Video AI avatar speak
-                    this.speechInMessages && !VideoAI.active
-                        ? this.speechMessage(true, 'ChatGPT', message)
-                        : this.sound('message');
-                })
-                .catch((err) => {
-                    this.hideAITypingIndicator('ChatGPT');
-                    console.log('ChatGPT error:', err);
-                });
-        }
-
-        if (isDeepSeekOn) {
-            if (this._moderator.chat_cant_deep_seek) {
-                this.cleanMessage();
-                return this.userLog(
-                    'warning',
-                    'The moderator does not allow you to chat with DeepSeek',
-                    'top-end',
-                    6000
-                );
-            }
-            data.to_peer_id = 'DeepSeek';
-            data.to_peer_name = 'DeepSeek';
-            console.log('Send message:', data);
-            this.socket.emit('message', data);
-            this.setMsgAvatar('left', this.peer_name, this.peer_avatar);
-            this.appendMessage(
-                'left',
-                this.leftMsgAvatar,
-                this.peer_name,
-                this.peer_id,
-                peer_msg,
-                data.to_peer_id,
-                data.to_peer_name
-            );
-            this.cleanMessage();
-
-            this.showAITypingIndicator('DeepSeek');
-
-            this.socket
-                .request('getDeepSeek', {
-                    time: getDataTimeString(),
-                    room: this.room_id,
-                    name: this.peer_name,
-                    prompt: peer_msg,
-                    context: this.deepSeekContext,
-                })
-                .then((completion) => {
-                    this.hideAITypingIndicator('DeepSeek');
-                    if (!completion) return;
-                    const { message, context } = completion;
-                    this.deepSeekContext = context ? context : [];
-                    console.log('Receive message:', message);
-                    this.setMsgAvatar('right', 'DeepSeek');
-                    this.appendMessage(
-                        'right',
-                        image.deepSeek,
-                        'DeepSeek',
-                        this.peer_id,
-                        message,
-                        'DeepSeek',
-                        'DeepSeek'
-                    );
-                    this.cleanMessage();
-                    this.streamingTask(message);
-                    this.speechInMessages && !VideoAI.active
-                        ? this.speechMessage(true, 'DeepSeek', message)
-                        : this.sound('message');
-                })
-                .catch((err) => {
-                    this.hideAITypingIndicator('DeepSeek');
-                    console.log('DeepSeek error:', err);
-                });
-        }
-
-        if (!isChatGPTOn && !isDeepSeekOn && VideoAI.enabled && VideoAI.active && this.chatPeerId === 'ChatGPT') {
-            // ChatGPT is off but LiveAvatar is active — speak the message directly via the avatar
-            this.setMsgAvatar('left', this.peer_name, this.peer_avatar);
-            this.appendMessage(
-                'left',
-                this.leftMsgAvatar,
-                this.peer_name,
-                this.peer_id,
-                peer_msg,
-                'ChatGPT',
-                'ChatGPT'
-            );
-            this.cleanMessage();
-            this.streamingTask(peer_msg);
-            return;
-        }
-
-        if (!isChatGPTOn && !isDeepSeekOn) {
-            const participantsList = this.getId('participantsList');
-            const participantsListItems = participantsList.getElementsByTagName('li');
-            for (let i = 0; i < participantsListItems.length; i++) {
-                const li = participantsListItems[i];
-                if (li.classList.contains('active')) {
-                    data.to_peer_id = li.getAttribute('data-to-id');
-                    data.to_peer_name = li.getAttribute('data-to-name');
-
-                    const isPublicMessage = data.to_peer_id === 'all';
-
-                    if (isPublicMessage && this._moderator.chat_cant_publicly) {
-                        this.cleanMessage();
-                        return this.userLog(
-                            'warning',
-                            'The moderator does not allow you to chat publicly',
-                            'top-end',
-                            6000
-                        );
-                    }
-
-                    if (!isPublicMessage && this._moderator.chat_cant_privately) {
-                        this.cleanMessage();
-                        return this.userLog(
-                            'warning',
-                            'The moderator does not allow you to chat privately',
-                            'top-end',
-                            6000
-                        );
-                    }
-
-                    console.log('Send message:', data);
-
-                    // Try DataChannel for public messages, fallback to signaling
-                    if (isPublicMessage && this.useDataChannel && this.isChatDataChannelOpen()) {
-                        const dcMsg = {
-                            type: 'chat',
-                            room_id: data.room_id,
-                            peer_name: data.peer_name,
-                            peer_avatar: data.peer_avatar,
-                            peer_id: data.peer_id,
-                            to_peer_id: data.to_peer_id,
-                            to_peer_name: data.to_peer_name,
-                            peer_msg: data.peer_msg,
-                            msg_id: data.msg_id,
-                            timestamp: Date.now(),
-                        };
-                        const sent = this.sendChatDataChannelMessage(dcMsg);
-                        if (!sent) {
-                            console.warn('DataChannel send failed, falling back to signaling');
-                            this.socket.emit('message', data);
-                        } else {
-                            console.log('Message sent via DataChannel');
-                        }
-                    } else {
-                        // Private messages or DataChannel unavailable: use signaling
-                        this.socket.emit('message', data);
-                    }
-
-                    this.setMsgAvatar('left', this.peer_name, this.peer_avatar);
-                    this.appendMessage(
-                        'left',
-                        this.leftMsgAvatar,
-                        this.peer_name,
-                        this.peer_id,
-                        peer_msg,
-                        data.to_peer_id,
-                        data.to_peer_name,
-                        data.msg_id
-                    );
-                    this.cleanMessage();
-                }
-            }
-        }
+        return this.chatManager.sendMessage();
     }
 
     sendMessageTo(to_peer_id, to_peer_name) {
-        if (!this.thereAreParticipants()) {
-            isChatPasteTxt = false;
-            this.cleanMessage();
-            return this.userLog('info', 'No participants in the room except you', 'top-end');
-        }
-        // Open chat and switch to the private conversation with this peer
-        this.chatPeerId = to_peer_id;
-        this.chatPeerName = to_peer_name;
-        this.chatPeerAvatar = '';
-        !this.isChatOpen ? this.toggleChat() : this.showPeerAboutAndMessages(to_peer_id, to_peer_name);
+        return this.chatManager.sendMessageTo(to_peer_id, to_peer_name);
     }
 
     async showMessage(data, toggleChat = true) {
-        const isPublicMessage = data.to_peer_id === 'all';
-        const messagePeerId = isPublicMessage ? 'all' : data.peer_id;
-
-        if (toggleChat && !this.isChatOpen && this.showChatOnMessage) {
-            // Auto-switch to the correct tab before opening the chat panel
-            if (isPublicMessage) {
-                this.chatPeerId = 'all';
-                this.chatPeerName = 'all';
-                this.chatPeerAvatar = '';
-            } else {
-                this.chatPeerId = data.peer_id;
-                this.chatPeerName = data.peer_name;
-                this.chatPeerAvatar = data.peer_avatar || '';
-            }
-            await this.toggleChat();
-        }
-
-        this.setMsgAvatar('right', data.peer_name, data.peer_avatar);
-        this.appendMessage(
-            'right',
-            this.rightMsgAvatar,
-            data.peer_name,
-            data.peer_id,
-            data.peer_msg,
-            data.to_peer_id,
-            data.to_peer_name,
-            data.msg_id
-        );
-
-        if (!this.showChatOnMessage) {
-            this.userLog('info', `💬 New message from: ${data.peer_name}`, 'top-end');
-        }
-
-        if (this.speechInMessages) {
-            VideoAI.active
-                ? this.streamingTask(`New message from: ${data.peer_name}, the message is: ${data.peer_msg}`)
-                : this.speechMessage(true, data.peer_name, data.peer_msg);
-        } else {
-            this.sound('message');
-        }
-
-        // Track unread count when message is not currently visible
-        const isMessageVisible = this.isChatOpen && this.chatPeerId === messagePeerId;
-        if (!isMessageVisible) {
-            this.unreadMessageCounts[messagePeerId] = (this.unreadMessageCounts[messagePeerId] || 0) + 1;
-            this.updateUnreadCountBadge(messagePeerId);
-        }
-
-        const participantsList = this.getId('participantsList');
-        const participantsListItems = participantsList.getElementsByTagName('li');
-        for (let i = 0; i < participantsListItems.length; i++) {
-            const li = participantsListItems[i];
-            // INCOMING PUBLIC MESSAGE
-            if (isPublicMessage && li.id === 'all' && !isMessageVisible) {
-                li.classList.add('pulsate');
-            }
-            // INCOMING PRIVATE MESSAGE
-            if (li.id === data.peer_id && !isPublicMessage && !isMessageVisible) {
-                li.classList.add('pulsate');
-                if (!['all', 'ChatGPT', 'DeepSeek'].includes(data.to_peer_id)) {
-                    // unread-count badge handled by updateUnreadCountBadge
-                }
-            }
-        }
+        return this.chatManager.showMessage(data, toggleChat);
     }
 
     updateUnreadCountBadge(peerId) {
-        const count = this.unreadMessageCounts[peerId] || 0;
-        try {
-            const badge = this.getId(`${peerId}-unread-count`);
-            if (count > 0) {
-                badge.textContent = count;
-                badge.classList.remove('hidden');
-            } else {
-                badge.textContent = '';
-                badge.classList.add('hidden');
-            }
-        } catch (e) {
-            // Badge element may not exist yet if participants list hasn't rendered
-        }
-        try {
-            const total = Object.values(this.unreadMessageCounts || {}).reduce(
-                (sum, n) => sum + (typeof n === 'number' ? n : 0),
-                0
-            );
-            const toolbarBadge = document.getElementById('chatUnreadBadge');
-            if (toolbarBadge) {
-                if (total > 0 && !this.isChatOpen) {
-                    toolbarBadge.textContent = total > 99 ? '99+' : String(total);
-                    toolbarBadge.classList.remove('hidden');
-                } else {
-                    toolbarBadge.textContent = '';
-                    toolbarBadge.classList.add('hidden');
-                }
-            }
-        } catch (e) {
-            // ignore
-        }
+        return this.chatManager.updateUnreadCountBadge(peerId);
     }
 
     setMsgAvatar(avatar, peerName, peerAvatar = false) {
-        const avatarImg =
-            peerAvatar && this.isValidAvatarURL(peerAvatar)
-                ? peerAvatar
-                : this.isValidEmail(peerName)
-                  ? this.genGravatar(peerName)
-                  : this.genAvatarSvg(peerName, 32);
-        avatar === 'left' ? (this.leftMsgAvatar = avatarImg) : (this.rightMsgAvatar = avatarImg);
+        return this.chatManager.setMsgAvatar(avatar, peerName, peerAvatar);
     }
 
     appendMessage(side, img, fromName, fromId, msg, toId, toName, msgId = '') {
-        const getSide = filterXSS(side);
-        // img is always internally computed (isValidAvatarURL / genAvatarSvg / genGravatar) and is
-        // set via setAttribute — no XSS risk. filterXSS must NOT be applied here because it encodes
-        // '<', '>' and '&' which breaks SVG data URIs produced by genAvatarSvg.
-        const getImg =
-            this.isValidAvatarURL(img) ||
-            (typeof img === 'string' && img.startsWith('data:image/')) ||
-            (typeof img === 'string' && (img.startsWith('../') || img.startsWith('/')))
-                ? img
-                : '';
-        const getFromName = filterXSS(fromName);
-        const getFromId = filterXSS(fromId);
-        const getMsg = filterXSS(msg);
-        const getToId = filterXSS(toId);
-        const getToName = filterXSS(toName);
-        const getMsgId = filterXSS(msgId || '');
-        const time = this.getTimeNow();
-
-        // Caller side convention is: left = local user, right = remote/assistant.
-        // UI convention is: local user on the right, remote on the left.
-        const myMessage = getSide === 'left';
-        const messageClass = myMessage ? 'my-message float-right' : 'other-message';
-        const messageData = myMessage ? 'text-end' : 'text-start';
-        const safeFromName = this.sanitizeHtml(getFromName);
-        const timeAndName = myMessage
-            ? `<span class="message-data-time">${time}, ${safeFromName} ( me ) </span>`
-            : `<span class="message-data-time">${time}, ${safeFromName} </span>`;
-
-        const formatMessage = this.formatMsg(getMsg);
-        const speechButton = this.isSpeechSynthesisSupported
-            ? `<button 
-                    id="msg-speech-${chatMessagesId}" 
-                    class="mr5" 
-                    onclick="rc.speechElementText('message-${chatMessagesId}')">
-                    ${icons.speech}
-                </button>`
-            : '';
-
-        // getImg is a user-controlled URL; use a temporary id and setAttribute
-        // after insertion to avoid double-decode XSS via insertAdjacentHTML.
-        const msgAvatarTmpId = `msg-av-${chatMessagesId}`;
-        const positionFirst = myMessage
-            ? `${timeAndName}<img id="${msgAvatarTmpId}" alt="avatar" />`
-            : `<img id="${msgAvatarTmpId}" alt="avatar" />${timeAndName}`;
-
-        const reactionEmojis = ['👍', '❤️', '😂', '😮', '😢', '🔥'];
-        const reactionButtons = reactionEmojis
-            .map(
-                (e) =>
-                    `<span class="reaction-emoji-btn" onclick="rc.sendChatReaction('msg-${chatMessagesId}', '${e}')" role="button">${e}</span>`
-            )
-            .join('');
-
-        const newMessageHTML = `
-            <li id="msg-${chatMessagesId}"  
-                data-from-id="${this.sanitizeHtml(getFromId)}" 
-                data-from-name="${this.sanitizeHtml(getFromName)}"
-                data-to-id="${this.sanitizeHtml(getToId)}" 
-                data-to-name="${this.sanitizeHtml(getToName)}"
-                data-msg-id="${this.sanitizeHtml(getMsgId)}"
-                class="clearfix"
-            >
-                <div class="message-data ${messageData}">
-                    ${positionFirst}
-                </div>
-                <div class="message ${messageClass}">
-                    <span class="text-start" id="message-${chatMessagesId}"></span>
-                    <div class="message-reactions"></div>
-                    <hr/>
-                    <div class="about-buttons mt5">
-                        <button 
-                            id="msg-copy-${chatMessagesId}" 
-                            class="mr5" 
-                            onclick="rc.copyToClipboard('message-${chatMessagesId}')">
-                            ${icons.paste}
-                        </button>
-                        ${speechButton}
-                        <button 
-                            id="msg-react-${chatMessagesId}" 
-                            class="mr5" 
-                            onclick="rc.toggleReactionPicker('msg-${chatMessagesId}')">
-                            ${icons.smile}
-                        </button>
-                        <button 
-                            id="msg-delete-${chatMessagesId}"   
-                            class="mr5" 
-                            onclick="rc.deleteMessage('msg-${chatMessagesId}')">
-                            ${icons.trash}
-                        </button>
-                    </div>
-                    <div id="reaction-picker-${chatMessagesId}" class="reaction-picker" style="display:none">
-                        ${reactionButtons}
-                    </div>
-                </div>
-            </li>
-        `;
-
-        this.collectMessages(time, getFromName, getMsg, getToId, getToName);
-
-        console.log('Append message to:', { to_id: getToId, to_name: getToName });
-
-        switch (getToId) {
-            case 'ChatGPT':
-                chatGPTMessages.insertAdjacentHTML('beforeend', newMessageHTML);
-                break;
-            case 'DeepSeek':
-                deepSeekMessages.insertAdjacentHTML('beforeend', newMessageHTML);
-                break;
-            case 'all':
-                chatPublicMessages.insertAdjacentHTML('beforeend', newMessageHTML);
-                break;
-            default:
-                chatPrivateMessages.insertAdjacentHTML('beforeend', newMessageHTML);
-                break;
-        }
-
-        const msgAvatarEl = document.getElementById(msgAvatarTmpId);
-        if (msgAvatarEl) {
-            msgAvatarEl.setAttribute('src', getImg);
-            msgAvatarEl.removeAttribute('id');
-        }
-
-        const message = getId(`message-${chatMessagesId}`);
-        if (message) {
-            if (['ChatGPT', 'DeepSeek'].includes(getFromName)) {
-                // Stream the message for ChatGPT or DeepSeek
-                this.streamMessage(message, getMsg, 100);
-            } else {
-                // Process the message for other senders
-                message.innerHTML = this.processMessage(getMsg);
-                hljs.highlightAll();
-            }
-        }
-
-        chatHistory.scrollTop += 500;
-
-        if (!this.isMobileDevice) {
-            this.setTippy('msg-delete-' + chatMessagesId, 'Delete', 'top');
-            this.setTippy('msg-copy-' + chatMessagesId, 'Copy', 'top');
-            this.setTippy('msg-speech-' + chatMessagesId, 'Speech', 'top');
-            this.setTippy('msg-react-' + chatMessagesId, 'React', 'top');
-        }
-
-        chatMessagesId++;
-        // Update empty chat notice after adding a message
-        updateChatEmptyNotice();
+        return this.chatManager.appendMessage(side, img, fromName, fromId, msg, toId, toName, msgId);
     }
 
     toggleReactionPicker(msgListId) {
-        const id = msgListId.replace('msg-', '');
-        const picker = document.getElementById('reaction-picker-' + id);
-        if (!picker) return;
-        const isVisible = picker.style.display !== 'none';
-        document.querySelectorAll('.reaction-picker').forEach((p) => (p.style.display = 'none'));
-        if (!isVisible) picker.style.display = 'flex';
+        return this.chatManager.toggleReactionPicker(msgListId);
     }
 
     sendChatReaction(msgListId, emoji) {
-        const msgEl = document.getElementById(msgListId);
-        if (!msgEl) return;
-        const msgId = msgEl.getAttribute('data-msg-id') || '';
-        // Determine action: toggle remove if already reacted, otherwise add
-        const reactionsEl = msgEl.querySelector('.message-reactions');
-        const existing = reactionsEl?.querySelector(`[data-emoji="${emoji}"]`);
-        const peers = existing ? JSON.parse(existing.getAttribute('data-peers') || '[]') : [];
-        const action = peers.includes(this.peer_name) ? 'remove' : 'add';
-        this.applyReactionToElement(msgEl, emoji, this.peer_name, action);
-        if (msgId) {
-            this.socket.emit('chatReaction', {
-                msg_id: msgId,
-                emoji: emoji,
-                peer_name: this.peer_name,
-                peer_id: this.peer_id,
-                action: action,
-            });
-        }
-        const id = msgListId.replace('msg-', '');
-        const picker = document.getElementById('reaction-picker-' + id);
-        if (picker) picker.style.display = 'none';
+        return this.chatManager.sendChatReaction(msgListId, emoji);
     }
 
     applyReactionToElement(msgEl, emoji, peerName, action = 'add') {
-        const reactionsEl = msgEl.querySelector('.message-reactions');
-        if (!reactionsEl) return;
-        const existing = reactionsEl.querySelector(`[data-emoji="${emoji}"]`);
-        if (action === 'add') {
-            if (existing) {
-                let peers = JSON.parse(existing.getAttribute('data-peers') || '[]');
-                if (!peers.includes(peerName)) {
-                    peers.push(peerName);
-                    existing.setAttribute('data-peers', JSON.stringify(peers));
-                    existing.querySelector('.reaction-count').textContent = peers.length;
-                    existing.setAttribute('data-tooltip', peers.join(', '));
-                }
-                if (peerName === this.peer_name) existing.classList.add('my-reaction');
-            } else {
-                const badge = document.createElement('span');
-                badge.className = 'reaction-badge';
-                if (peerName === this.peer_name) badge.classList.add('my-reaction');
-                badge.setAttribute('data-emoji', emoji);
-                badge.setAttribute('data-peers', JSON.stringify([peerName]));
-                badge.setAttribute('data-tooltip', peerName);
-                badge.innerHTML = renderRoomTemplate('reactionBadgeTemplate', {
-                    text: {
-                        emoji,
-                        countValue: '1',
-                    },
-                });
-                badge.addEventListener('click', () => this.sendChatReaction(msgEl.id, emoji));
-                reactionsEl.appendChild(badge);
-            }
-        } else if (action === 'remove') {
-            if (existing) {
-                let peers = JSON.parse(existing.getAttribute('data-peers') || '[]');
-                peers = peers.filter((p) => p !== peerName);
-                if (peers.length === 0) {
-                    existing.remove();
-                } else {
-                    existing.setAttribute('data-peers', JSON.stringify(peers));
-                    existing.querySelector('.reaction-count').textContent = peers.length;
-                    existing.setAttribute('data-tooltip', peers.join(', '));
-                    if (peerName === this.peer_name) existing.classList.remove('my-reaction');
-                }
-            }
-        }
+        return this.chatManager.applyReactionToElement(msgEl, emoji, peerName, action);
     }
 
     handleChatReaction = (dataObject) => {
-        const msg_id = filterXSS(dataObject.msg_id || '');
-        const emoji = filterXSS(dataObject.emoji || '');
-        const peer_name = filterXSS(dataObject.peer_name || '');
-        const action = dataObject.action === 'remove' ? 'remove' : 'add';
-        if (!msg_id || !emoji) return;
-        const msgEl = document.querySelector(`li[data-msg-id="${CSS.escape(msg_id)}"]`);
-        if (!msgEl) return;
-        this.applyReactionToElement(msgEl, emoji, peer_name, action);
+        return this.chatManager.handleChatReaction(dataObject);
     };
 
     showAITypingIndicator(aiName) {
-        const containerId = aiName === 'ChatGPT' ? 'chatGPTMessages' : 'deepSeekMessages';
-        const container = this.getId(containerId);
-        if (!container) return;
-        const existing = this.getId(`ai-typing-${aiName}`);
-        if (existing) return;
-        const typingHTML = `
-            <li id="ai-typing-${aiName}" class="clearfix">
-                <div class="ai-typing-indicator">
-                    <div class="typing-dots">
-                        <span></span>
-                        <span></span>
-                        <span></span>
-                    </div>
-                </div>
-            </li>
-        `;
-        container.insertAdjacentHTML('beforeend', typingHTML);
-        const chatHistory = this.getId('chatHistory');
-        if (chatHistory) chatHistory.scrollTop = chatHistory.scrollHeight;
+        return this.chatManager.showAITypingIndicator(aiName);
     }
 
     hideAITypingIndicator(aiName) {
-        const indicator = this.getId(`ai-typing-${aiName}`);
-        if (indicator) indicator.remove();
+        return this.chatManager.hideAITypingIndicator(aiName);
     }
 
     streamMessage(element, message, speed = 100) {
-        // Cancel any in-progress stream on this element
-        if (element._streamInterval) {
-            clearInterval(element._streamInterval);
-        }
-
-        const safeMessage = this.sanitizeHtml(String(message ?? ''));
-        const words = safeMessage.split(' ').filter((w) => w.length > 0);
-
-        let textBuffer = '';
-        let wordIndex = 0;
-
-        element._streamInterval = setInterval(() => {
-            if (wordIndex < words.length) {
-                textBuffer += words[wordIndex] + ' ';
-                // Preserve visual line breaks while streaming plain text.
-                element.innerHTML = textBuffer.replace(/\n/g, '<br/>');
-                wordIndex++;
-            } else {
-                clearInterval(element._streamInterval);
-                element._streamInterval = null;
-                element.innerHTML = this.processAIMessage(message);
-                this.highlightCodeBlocks(element);
-            }
-        }, speed);
+        return this.chatManager.streamMessage(element, message, speed);
     }
 
     highlightCodeBlocks(element) {
-        element.querySelectorAll('pre code').forEach((block) => {
-            hljs.highlightElement(block);
-        });
+        return this.chatManager.highlightCodeBlocks(element);
     }
 
     processAIMessage(message) {
-        const raw = String(message ?? '');
-        if (typeof marked !== 'undefined') {
-            return filterXSS(marked.parse(raw));
-        }
-        // Fallback if markdown parser is unavailable.
-        return filterXSS(raw).replace(/\n/g, '<br/>');
+        return this.chatManager.processAIMessage(message);
     }
 
     processMessage(message) {
-        const codeBlockRegex = /```([a-zA-Z0-9]+)?\n([\s\S]*?)```/g;
-        let parts = [];
-        let lastIndex = 0;
-
-        message.replace(codeBlockRegex, (match, lang, code, offset) => {
-            if (offset > lastIndex) {
-                parts.push({ type: 'text', value: message.slice(lastIndex, offset) });
-            }
-            parts.push({ type: 'code', lang, value: code });
-            lastIndex = offset + match.length;
-        });
-
-        if (lastIndex < message.length) {
-            parts.push({ type: 'text', value: message.slice(lastIndex) });
-        }
-
-        return parts
-            .map((part) => {
-                if (part.type === 'text') {
-                    return part.value;
-                } else if (part.type === 'code') {
-                    return `<pre><code class="language-${part.lang || ''}">${part.value}</code></pre>`;
-                }
-            })
-            .join('');
+        return this.chatManager.processMessage(message);
     }
 
     deleteMessage(id) {
-        Swal.fire({
-            background: swalBackground,
-            position: 'top',
-            title: 'Delete this Message?',
-            imageUrl: image.delete,
-            showDenyButton: true,
-            confirmButtonText: `Yes`,
-            denyButtonText: `No`,
-            showClass: { popup: 'animate__animated animate__fadeInDown' },
-            hideClass: { popup: 'animate__animated animate__fadeOutUp' },
-        }).then((result) => {
-            if (result.isConfirmed) {
-                this.getId(id).remove();
-                this.sound('delete');
-                updateChatEmptyNotice();
-            }
-        });
+        return this.chatManager.deleteMessage(id);
     }
 
     copyToClipboard(id) {
-        const text = this.getId(id).innerText;
-        navigator.clipboard
-            .writeText(text)
-            .then(() => {
-                this.userLog('success', 'Message copied!', 'top-end', 1000);
-            })
-            .catch((err) => {
-                this.userLog('error', err, 'top-end', 6000);
-            });
+        return this.chatManager.copyToClipboard(id);
     }
 
     formatMsg(msg) {
-        const message = filterXSS(msg);
-        if (message.trim().length == 0) return;
-        if (this.isHtml(message)) return this.sanitizeHtml(message);
-        if (this.isValidHttpURL(message)) {
-            if (this.isImageURL(message)) return this.getImage(message);
-            //if (this.isVideoTypeSupported(message)) return this.getIframe(message);
-            return this.getLink(message);
-        }
-        if (isChatMarkdownOn) return marked.parse(message);
-        if (isChatPasteTxt && this.getLineBreaks(message) > 1) {
-            isChatPasteTxt = false;
-            return this.getPre(message);
-        }
-        if (this.getLineBreaks(message) > 1) return this.getPre(message);
-        console.log('FormatMsg', message);
-        return message;
+        return this.chatManager.formatMsg(msg);
     }
 
     sanitizeHtml(input) {
-        const map = {
-            '&': '&amp;',
-            '<': '&lt;',
-            '>': '&gt;',
-            '"': '&quot;',
-            "'": '&#039;',
-            '/': '&#x2F;',
-            '`': '&#96;',
-            '=': '&#61;',
-        };
-        return input.replace(/[&<>"'/`=]/g, (m) => map[m]);
+        return this.chatManager.sanitizeHtml(input);
     }
 
     isHtml(str) {
-        const a = document.createElement('div');
-        a.innerHTML = str;
-        for (var c = a.childNodes, i = c.length; i--; ) {
-            if (c[i].nodeType == 1) return true;
-        }
-        return false;
+        return this.chatManager.isHtml(str);
     }
 
     isValidHttpURL(input) {
-        try {
-            new URL(input);
-            return true;
-        } catch (_) {
-            return false;
-        }
+        return this.chatManager.isValidHttpURL(input);
     }
 
     isValidAvatarURL(url) {
-        if (!url || typeof url !== 'string') return false;
-        try {
-            const parsed = new URL(url);
-            return parsed.protocol === 'http:' || parsed.protocol === 'https:';
-        } catch {
-            return false;
-        }
+        return this.chatManager.isValidAvatarURL(url);
     }
 
     isImageURL(input) {
-        if (!input || typeof input !== 'string') return false;
-        try {
-            const url = new URL(input);
-            return ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.tiff', '.svg'].some((ext) =>
-                url.pathname.toLowerCase().endsWith(ext)
-            );
-        } catch (e) {
-            return false;
-        }
+        return this.chatManager.isImageURL(input);
     }
 
     getImage(input) {
-        const url = filterXSS(input);
-        const div = document.createElement('div');
-        const img = document.createElement('img');
-        img.setAttribute('src', url);
-        img.setAttribute('width', '200px');
-        img.setAttribute('height', 'auto');
-        div.appendChild(img);
-        console.log('GetImg', div.firstChild.outerHTML);
-        return div.firstChild.outerHTML;
+        return this.chatManager.getImage(input);
     }
 
     getLink(input) {
-        const url = filterXSS(input);
-        const a = document.createElement('a');
-        const div = document.createElement('div');
-        const linkText = document.createTextNode(url);
-        a.setAttribute('href', url);
-        a.setAttribute('target', '_blank');
-        a.appendChild(linkText);
-        div.appendChild(a);
-        console.log('GetLink', div.firstChild.outerHTML);
-        return div.firstChild.outerHTML;
+        return this.chatManager.getLink(input);
     }
 
     getPre(input) {
-        const text = filterXSS(input);
-        const pre = document.createElement('pre');
-        const div = document.createElement('div');
-        pre.textContent = text;
-        div.appendChild(pre);
-        console.log('GetPre', div.firstChild.outerHTML);
-        return div.firstChild.outerHTML;
+        return this.chatManager.getPre(input);
     }
 
     getIframe(input) {
-        const url = filterXSS(input);
-        const iframe = document.createElement('iframe');
-        const div = document.createElement('div');
-        const is_youtube = this.getVideoType(url) == 'na' ? true : false;
-        const video_audio_url = is_youtube ? this.getYoutubeEmbed(url) : url;
-        iframe.setAttribute('title', 'Chat-IFrame');
-        iframe.setAttribute('src', video_audio_url);
-        iframe.setAttribute('width', 'auto');
-        iframe.setAttribute('frameborder', '0');
-        iframe.setAttribute(
-            'allow',
-            'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture'
-        );
-        iframe.setAttribute('allowfullscreen', 'allowfullscreen');
-        div.appendChild(iframe);
-        console.log('GetIFrame', div.firstChild.outerHTML);
-        return div.firstChild.outerHTML;
+        return this.chatManager.getIframe(input);
     }
 
     getLineBreaks(message) {
-        return (message.match(/\n/g) || []).length;
+        return this.chatManager.getLineBreaks(message);
     }
 
     checkLineBreaks() {
-        chatMessage.style.height = '';
-        if (this.getLineBreaks(chatMessage.value) > 0 || chatMessage.value.length > 50) {
-            chatMessage.setAttribute('rows', '2');
-        }
+        return this.chatManager.checkLineBreaks();
     }
 
     collectMessages(time, from, msg, toId = 'all', toName = 'all') {
-        this.chatMessages.push({
-            time: time,
-            from: from,
-            msg: msg,
-            toId: toId,
-            toName: toName,
-        });
+        return this.chatManager.collectMessages(time, from, msg, toId, toName);
     }
 
-    /**
-     * Queues an incoming chat message for TTS or speaks it immediately if queue is empty.
-     * Enforces a maximum queue size to prevent unbounded lag.
-     * @param {boolean} newMsg - Whether the message is a new incoming chat message.
-     * @param {string} from - The name of the sender.
-     * @param {string} msg - The message content.
-     */
     speechMessage(newMsg = true, from, msg) {
-        if (this._ttsQueue.length >= this.TTS_QUEUE_MAX_LENGTH) {
-            console.warn('[speechMessage] TTS queue full, dropping message from', from);
-            return;
-        }
-
-        this._ttsQueue.push({ newMsg, from, msg });
-        console.log('[speechMessage] Queued message. Queue length:', this._ttsQueue.length);
-
-        if (!this._isSpeaking) {
-            this._processTtsQueue();
-        }
+        return this.chatManager.speechMessage(newMsg, from, msg);
     }
 
-    /**
-     * Internal method to process the TTS queue sequentially.
-     * @private
-     */
     _processTtsQueue() {
-        if (this._ttsQueue.length === 0) {
-            this._isSpeaking = false;
-            return;
-        }
-
-        this._isSpeaking = true;
-        const { newMsg, from, msg } = this._ttsQueue.shift();
-        console.log('[speechMessage] Speaking message from', from, '. Queue remaining:', this._ttsQueue.length);
-
-        const speech = new SpeechSynthesisUtterance();
-        speech.text = (newMsg ? 'New' : '') + ' message from:' + from + '. The message is:' + msg;
-        speech.rate = 0.9;
-
-        speech.onend = () => {
-            console.log('[speechMessage] Finished speaking message from', from);
-            this._processTtsQueue(); // Process next in queue
-        };
-
-        speech.onerror = (event) => {
-            console.error('[speechMessage] Speech error:', event);
-            this._processTtsQueue(); // Process next even on error
-        };
-
-        window.speechSynthesis.speak(speech);
+        return this.chatManager._processTtsQueue();
     }
 
-    /**
-     * Initiates speech synthesis for the text content of a specified HTML element.
-     * Cancels any ongoing speech before starting a new one.
-     * @param {string} elemId - The ID of the HTML element whose text content will be spoken.
-     */
     speechElementText(elemId) {
-        const element = this.getId(elemId);
-        if (!element) {
-            console.warn(`[speechElementText] Element with ID ${elemId} not found.`);
-            return;
-        }
-        window.speechSynthesis.cancel(); // Cancel any ongoing speech
-        this.speechText(element.innerText);
+        return this.chatManager.speechElementText(elemId);
     }
 
-    /**
-     * Initiates speech synthesis for a given text message.
-     * If VideoAI is active, it delegates to `streamingTask`.
-     * Otherwise, it cancels any ongoing speech and starts a new one.
-     * @param {string} msg - The message to be spoken.
-     */
-    /**
-     * Initiates speech synthesis for a given text message.
-     * If VideoAI is active, it delegates to `streamingTask`.
-     * Otherwise, it cancels any ongoing speech and starts a new one.
-     * Clears the automatic queue state to prevent race conditions.
-     * @param {string} msg - The message to be spoken.
-     */
     speechText(msg) {
-        if (VideoAI.active) {
-            this.streamingTask(msg);
-        } else {
-            // Prevent the race condition: clear the auto queue state first
-            this._ttsQueue = [];
-            this._isSpeaking = false;
-            
-            window.speechSynthesis.cancel(); // Cancel any ongoing speech
-            const speech = new SpeechSynthesisUtterance();
-            speech.text = msg;
-            speech.rate = 0.9;
-            window.speechSynthesis.speak(speech);
-        }
+        return this.chatManager.speechText(msg);
     }
 
     chatToggleBg() {
-        this.isChatBgTransparent = !this.isChatBgTransparent;
-        const chatContainer = document.querySelector('.chat-container');
-        if (this.isChatBgTransparent) {
-            document.documentElement.style.setProperty('--msger-bg', 'rgba(0, 0, 0, 0.200)');
-            if (chatContainer) {
-                chatContainer.style.backdropFilter = 'blur(12px)';
-                chatContainer.style.webkitBackdropFilter = 'blur(12px)';
-            }
-        } else {
-            setTheme();
-            if (chatContainer) {
-                chatContainer.style.backdropFilter = 'none';
-                chatContainer.style.webkitBackdropFilter = 'none';
-            }
-        }
+        return this.chatManager.chatToggleBg();
     }
 
     chatClean() {
-        if (this.chatMessages.length === 0) {
-            return userLog('info', 'No chat messages to clean', 'top-end');
-        }
-        Swal.fire({
-            background: swalBackground,
-            position: 'top',
-            title: 'Clean up all chat Messages?',
-            imageUrl: image.delete,
-            showDenyButton: true,
-            confirmButtonText: `Yes`,
-            denyButtonText: `No`,
-            showClass: { popup: 'animate__animated animate__fadeInDown' },
-            hideClass: { popup: 'animate__animated animate__fadeOutUp' },
-        }).then((result) => {
-            if (result.isConfirmed) {
-                function removeAllChildNodes(parentNode) {
-                    while (parentNode.firstChild) {
-                        parentNode.removeChild(parentNode.firstChild);
-                    }
-                }
-                // Remove child nodes from different message containers
-                removeAllChildNodes(chatGPTMessages);
-                removeAllChildNodes(deepSeekMessages);
-                removeAllChildNodes(chatPublicMessages);
-                removeAllChildNodes(chatPrivateMessages);
-                this.chatMessages = [];
-                this.chatGPTContext = [];
-                this.deepSeekContext = [];
-                updateChatEmptyNotice();
-                this.sound('delete');
-            }
-        });
+        return this.chatManager.chatClean();
     }
 
     chatSave() {
-        if (this.chatMessages.length === 0) {
-            return userLog('info', 'No chat messages to save', 'top-end');
-        }
-        const grouped = {
-            room: this.room_id,
-            public: [],
-            chatGPT: [],
-            deepSeek: [],
-            private: {},
-        };
-        for (const msg of this.chatMessages) {
-            const entry = { time: msg.time, from: msg.from, msg: msg.msg };
-            switch (msg.toId) {
-                case 'all':
-                    grouped.public.push(entry);
-                    break;
-                case 'ChatGPT':
-                    grouped.chatGPT.push(entry);
-                    break;
-                case 'DeepSeek':
-                    grouped.deepSeek.push(entry);
-                    break;
-                default:
-                    const name = msg.toName || msg.toId;
-                    if (!grouped.private[name]) grouped.private[name] = [];
-                    grouped.private[name].push(entry);
-                    break;
-            }
-        }
-        // Remove empty sections
-        if (grouped.public.length === 0) delete grouped.public;
-        if (grouped.chatGPT.length === 0) delete grouped.chatGPT;
-        if (grouped.deepSeek.length === 0) delete grouped.deepSeek;
-        if (Object.keys(grouped.private).length === 0) delete grouped.private;
-        saveObjToJsonFile(grouped, 'CHAT');
+        return this.chatManager.chatSave();
     }
 
     // ##############################################
