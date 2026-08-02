@@ -6079,19 +6079,19 @@ class RoomClient {
     }
 
     toggleReactionPicker(msgListId) {
-        return this.chatManager.toggleReactionPicker(msgListId);
+        return this.reactionManager.toggleReactionPicker(msgListId);
     }
 
     sendChatReaction(msgListId, emoji) {
-        return this.chatManager.sendChatReaction(msgListId, emoji);
+        return this.reactionManager.sendChatReaction(msgListId, emoji);
     }
 
     applyReactionToElement(msgEl, emoji, peerName, action = 'add') {
-        return this.chatManager.applyReactionToElement(msgEl, emoji, peerName, action);
+        return this.reactionManager.applyReactionToElement(msgEl, emoji, peerName, action);
     }
 
     handleChatReaction = (dataObject) => {
-        return this.chatManager.handleChatReaction(dataObject);
+        return this.reactionManager.handleChatReaction(dataObject);
     };
 
     showAITypingIndicator(aiName) {

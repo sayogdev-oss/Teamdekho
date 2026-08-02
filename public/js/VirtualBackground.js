@@ -44,6 +44,10 @@ class VirtualBackground {
         this.lastSegmentationMask = null;
         this.scalingCanvas = null; // New line for reusable canvas
         this.scalingCtx = null;    // New line for reusable context
+        this.mainCanvas = null;
+        this.mainCtx = null;
+        this.maskCanvas = null;
+        this.maskCtx = null;
     }
 
     async initializeSegmentation() {
@@ -58,8 +62,12 @@ class VirtualBackground {
                 locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${file}`,
             });
 
+            const cores = navigator.hardwareConcurrency || 4;
+            const deviceMemory = navigator.deviceMemory || 2;
+            const modelSelection = (cores >= 8 && deviceMemory >= 8) ? 1 : 0;
+
             this.segmentation.setOptions({
-                modelSelection: 1, // Higher accuracy
+                modelSelection, // Dynamic based on device capability (1 for high-end, 0 for light/fast)
                 runningMode: 'video', // Smoother segmentation for streaming
                 smoothSegmentation: true, // Enables smoother edges
             });
@@ -68,7 +76,7 @@ class VirtualBackground {
 
             await this.segmentation.initialize();
             this.initialized = true;
-            console.log('✅ Segmentation initialized successfully.');
+            console.log('✅ Segmentation initialized successfully with modelSelection:', modelSelection);
         } catch (error) {
             console.error('❌ Error initializing segmentation:', error);
             throw error;
@@ -101,17 +109,24 @@ class VirtualBackground {
         }
 
         try {
-            const canvas = new OffscreenCanvas(videoFrame.displayWidth, videoFrame.displayHeight);
-            const ctx = canvas.getContext('2d');
+            const width = videoFrame.displayWidth;
+            const height = videoFrame.displayHeight;
+
+            if (!this.mainCanvas || this.mainCanvas.width !== width || this.mainCanvas.height !== height) {
+                this.mainCanvas = new OffscreenCanvas(width, height);
+                this.mainCtx = this.mainCanvas.getContext('2d');
+            }
+
+            this.mainCtx.clearRect(0, 0, width, height);
 
             // Apply original frame
-            ctx.drawImage(imageBitmap, 0, 0, canvas.width, canvas.height);
+            this.mainCtx.drawImage(imageBitmap, 0, 0, width, height);
 
             // Apply mask processing
-            maskHandler(ctx, canvas, segmentationMask, imageBitmap);
+            maskHandler(this.mainCtx, this.mainCanvas, segmentationMask, imageBitmap);
 
             // Create new video frame with the processed content
-            const processedFrame = new VideoFrame(canvas, {
+            const processedFrame = new VideoFrame(this.mainCanvas, {
                 timestamp: videoFrame.timestamp,
                 alpha: 'keep', // Ensure transparency is preserved
             });
@@ -393,21 +408,26 @@ class VirtualBackground {
 
         // Handler for applying virtual background
         const maskHandler = (ctx, canvas, mask, imageBitmap) => {
-            // Create an offscreen canvas for a softer mask
-            const maskCanvas = new OffscreenCanvas(canvas.width, canvas.height);
-            const maskCtx = maskCanvas.getContext('2d');
+            const width = canvas.width;
+            const height = canvas.height;
+            if (!this.maskCanvas || this.maskCanvas.width !== width || this.maskCanvas.height !== height) {
+                this.maskCanvas = new OffscreenCanvas(width, height);
+                this.maskCtx = this.maskCanvas.getContext('2d');
+            }
 
+            this.maskCtx.clearRect(0, 0, width, height);
             // Apply slight blur to mask to smooth edges
-            maskCtx.filter = 'blur(5px)'; // Adjust to control softness
-            maskCtx.drawImage(mask, 0, 0, canvas.width, canvas.height);
+            this.maskCtx.filter = 'blur(5px)'; // Adjust to control softness
+            this.maskCtx.drawImage(mask, 0, 0, width, height);
+            this.maskCtx.filter = 'none';
 
             // Apply the softened mask
             ctx.globalCompositeOperation = 'destination-in';
-            ctx.drawImage(maskCanvas, 0, 0, canvas.width, canvas.height);
+            ctx.drawImage(this.maskCanvas, 0, 0, width, height);
 
             // Draw background behind the person
             ctx.globalCompositeOperation = 'destination-over';
-            ctx.drawImage(background, 0, 0, canvas.width, canvas.height);
+            ctx.drawImage(background, 0, 0, width, height);
         };
 
         console.log('✅ Apply Virtual Background.');
@@ -424,23 +444,28 @@ class VirtualBackground {
 
         // Handler for applying transparency by using only the mask
         const maskHandler = (ctx, canvas, mask, imageBitmap) => {
+            const width = canvas.width;
+            const height = canvas.height;
             // Clear the canvas (ensures transparency)
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.clearRect(0, 0, width, height);
 
             // Draw the original frame (so we start with the full image)
-            ctx.drawImage(imageBitmap, 0, 0, canvas.width, canvas.height);
+            ctx.drawImage(imageBitmap, 0, 0, width, height);
 
-            // Create an offscreen canvas for smooth masking
-            const maskCanvas = new OffscreenCanvas(canvas.width, canvas.height);
-            const maskCtx = maskCanvas.getContext('2d');
+            if (!this.maskCanvas || this.maskCanvas.width !== width || this.maskCanvas.height !== height) {
+                this.maskCanvas = new OffscreenCanvas(width, height);
+                this.maskCtx = this.maskCanvas.getContext('2d');
+            }
 
+            this.maskCtx.clearRect(0, 0, width, height);
             // Blur the mask slightly for softer edges
-            maskCtx.filter = 'blur(5px)';
-            maskCtx.drawImage(mask, 0, 0, canvas.width, canvas.height);
+            this.maskCtx.filter = 'blur(5px)';
+            this.maskCtx.drawImage(mask, 0, 0, width, height);
+            this.maskCtx.filter = 'none';
 
             // Apply the mask to keep only the person
             ctx.globalCompositeOperation = 'destination-in';
-            ctx.drawImage(maskCanvas, 0, 0, canvas.width, canvas.height);
+            ctx.drawImage(this.maskCanvas, 0, 0, width, height);
 
             // Reset blending mode to normal
             ctx.globalCompositeOperation = 'source-over';
