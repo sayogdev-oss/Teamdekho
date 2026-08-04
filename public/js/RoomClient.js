@@ -364,7 +364,7 @@ class RoomClient {
         this.isEditorPrivate = false;
         this.collabEditorDelta = null;
         this._privatePersistTimer = null;
-        this.isBreakoutPinned = false;
+
         this.isSpeechSynthesisSupported = isSpeechSynthesisSupported;
         /** @type {Array<{newMsg: boolean, from: string, msg: string}>} */
         this._ttsQueue = [];
@@ -475,6 +475,7 @@ class RoomClient {
         this.moderatorManager = new ModeratorManager(this);
         this.recordingManager = new RecordingManager(this);
         this.lobbyManager = new LobbyManager(this);
+        this.breakoutRoomManager = new BreakoutRoomManager(this);
 
         this.videoProducerId = null;
         this.screenProducerId = null;
@@ -1388,12 +1389,12 @@ class RoomClient {
         this.socket.on('editorChange', this.handleEditorChange);
         this.socket.on('editorActions', this.handleEditorActions);
         this.socket.on('editorUpdate', this.handleEditorUpdate);
-        this.socket.on('breakoutRoom', this.handleBreakoutRoom);
-        this.socket.on('breakoutRoomCountsChanged', this.handleBreakoutRoomCountsChanged);
-        this.socket.on('breakoutRoomMessage', this.handleBreakoutRoomMessage);
-        this.socket.on('breakoutRoomEnd', this.handleBreakoutRoomEnd);
-        this.socket.on('breakoutRoomCountdown', this.handleBreakoutRoomCountdown);
-        this.socket.on('breakoutRoomHelp', this.handleBreakoutRoomHelp);
+        this.socket.on('breakoutRoom', (data) => this.breakoutRoomManager.handleBreakoutRoom(data));
+        this.socket.on('breakoutRoomCountsChanged', () => this.breakoutRoomManager.handleBreakoutRoomCountsChanged());
+        this.socket.on('breakoutRoomMessage', (data) => this.breakoutRoomManager.handleBreakoutRoomMessage(data));
+        this.socket.on('breakoutRoomEnd', (data) => this.breakoutRoomManager.handleBreakoutRoomEnd(data));
+        this.socket.on('breakoutRoomCountdown', (data) => this.breakoutRoomManager.handleBreakoutRoomCountdown(data));
+        this.socket.on('breakoutRoomHelp', (data) => this.breakoutRoomManager.handleBreakoutRoomHelp(data));
         this.socket.on('followMe', (data) => this.followMeManager.handleFollowMeData(data));
         this.socket.on('chatReaction', (data) => this.reactionManager.handleChatReaction(data));
         this.socket.on('consumerScore', ({ consumerId, score }) => {
@@ -1832,120 +1833,31 @@ class RoomClient {
     };
 
     handleBreakoutRoom = (data) => {
-        if (data.action === 'assign') {
-            this.joinBreakoutRoom(data.breakoutRoom, data.mainRoom, data.duration, data.roomName);
-        }
+        return this.breakoutRoomManager.handleBreakoutRoom(data);
     };
 
     handleBreakoutRoomCountsChanged = () => {
-        if (isBreakoutPanelOpen) refreshBreakoutPanel();
+        return this.breakoutRoomManager.handleBreakoutRoomCountsChanged();
     };
 
     handleBreakoutRoomMessage = (data) => {
-        console.log('SocketOn breakoutRoomMessage', data);
-        this.userLog('info', `<b>${data.peer_name}</b>: ${data.message}`, 'top-end', 8000);
-        sound('notification');
+        return this.breakoutRoomManager.handleBreakoutRoomMessage(data);
     };
 
     handleBreakoutRoomEnd = (data) => {
-        console.log('SocketOn breakoutRoomEnd', data);
-        this.userLog('info', 'Breakout session ended by presenter. Returning to main room...', 'top-end', 4000);
-        sound('notification');
-        setTimeout(() => returnToMainRoom(), 2000);
+        return this.breakoutRoomManager.handleBreakoutRoomEnd(data);
     };
 
     handleBreakoutRoomCountdown = (data) => {
-        console.log('SocketOn breakoutRoomCountdown', data);
-        sound('notification');
-        startBreakoutEndCountdown(data.countdown);
+        return this.breakoutRoomManager.handleBreakoutRoomCountdown(data);
     };
 
     handleBreakoutRoomHelp = (data) => {
-        console.log('SocketOn breakoutRoomHelp', data);
-        if (!(isPresenter || isCoHost)) return;
-        sound('notification');
-        const roomIdx = breakoutRooms.findIndex((r) => r.id === data.breakoutRoom);
-        const room = roomIdx !== -1 ? breakoutRooms[roomIdx] : null;
-        const roomLabel = room ? room.name || `Room ${roomIdx + 1}` : data.breakoutRoom;
-        Swal.fire({
-            background: swalBackground,
-            position: 'top',
-            title: 'Help Requested',
-            html: renderRoomTemplate('popupBreakoutHelpTemplate', {
-                text: {
-                    peerName: data.peer_name,
-                    roomLabel,
-                },
-            }),
-            showDenyButton: true,
-            confirmButtonText: `${icons.signIn} Join Room`,
-            denyButtonText: 'Dismiss',
-            customClass: {
-                popup: 'breakout-swal breakout-swal--help',
-                htmlContainer: 'breakout-swal-html',
-                confirmButton: 'breakout-swal-confirm breakout-swal-confirm--help',
-                denyButton: 'breakout-swal-deny',
-            },
-            showClass: { popup: 'animate__animated animate__fadeInDown' },
-            hideClass: { popup: 'animate__animated animate__fadeOutUp' },
-        }).then((result) => {
-            if (result.isConfirmed) {
-                presenterJoinBreakoutRoom(data.breakoutRoom);
-            }
-        });
+        return this.breakoutRoomManager.handleBreakoutRoomHelp(data);
     };
 
     async joinBreakoutRoom(breakoutRoom, mainRoom, duration = 'unlimited', roomName = '') {
-        const displayName = roomName || breakoutRoom;
-        const durationChip =
-            duration && duration !== 'unlimited'
-                ? `<div class="breakout-popup-chip">${icons.clock}<span>${duration}</span></div>`
-                : `<div class="breakout-popup-chip breakout-popup-chip--open">${icons.infinity}<span>No time limit</span></div>`;
-        const confirmResult = await Swal.fire({
-            allowOutsideClick: false,
-            allowEscapeKey: false,
-            background: swalBackground,
-            position: 'center',
-            title: 'Breakout Room Ready',
-            html: renderRoomTemplate('popupBreakoutJoinTemplate', {
-                text: {
-                    displayName,
-                },
-                html: {
-                    durationChip,
-                },
-            }),
-            showDenyButton: true,
-            confirmButtonText: `${icons.arrowRight} Join`,
-            denyButtonText: 'Stay',
-            customClass: {
-                popup: 'breakout-swal breakout-swal--join',
-                htmlContainer: 'breakout-swal-html',
-                confirmButton: 'breakout-swal-confirm breakout-swal-confirm--join',
-                denyButton: 'breakout-swal-deny breakout-swal-deny--quiet',
-            },
-            showClass: { popup: 'animate__animated animate__fadeInDown' },
-            hideClass: { popup: 'animate__animated animate__fadeOutUp' },
-        });
-
-        if (!confirmResult.isConfirmed) return;
-
-        const baseUrl = `${window.location.origin}/join`;
-        const queryParams = new URLSearchParams({
-            room: breakoutRoom,
-            name: this.peer_name,
-            audio: this.peer_info.peer_audio ? '1' : '0',
-            video: this.peer_info.peer_video ? '1' : '0',
-            notify: '0',
-            breakoutMain: mainRoom,
-            breakoutName: displayName,
-            duration: duration || 'unlimited',
-        });
-        if (this.peer_info.peer_token) queryParams.set('token', this.peer_info.peer_token);
-
-        if (typeof preventExit !== 'undefined') preventExit = false;
-        this.exit(true);
-        openURL(`${baseUrl}?${queryParams.toString()}`);
+        return this.breakoutRoomManager.joinBreakoutRoom(breakoutRoom, mainRoom, duration, roomName);
     }
 
     // ####################################################
@@ -5687,12 +5599,12 @@ class RoomClient {
             this.isVideoPinned ||
             this.isChatPinned ||
             this.isEditorPinned ||
-            this.isBreakoutPinned ||
+            this.breakoutRoomManager.isBreakoutPinned ||
             transcription.isPin();
         const menuBarWidth =
             this.isVideoPinned ||
             this.isChatPinned ||
-            this.isBreakoutPinned ||
+            this.breakoutRoomManager.isBreakoutPinned ||
             transcription.isPin()
                 ? '75%'
                 : '70%';
@@ -5721,8 +5633,8 @@ class RoomClient {
         if (this.isEditorPinned) {
             this.editorPin();
         }
-        if (this.isBreakoutPinned) {
-            this.breakoutPin();
+        if (this.breakoutRoomManager.isBreakoutPinned) {
+            this.breakoutRoomManager.breakoutPin();
         }
         if (this.transcription.isPin()) {
             this.transcription.pinned();
@@ -6247,177 +6159,34 @@ class RoomClient {
     // ####################################################
 
     toggleBreakoutPin() {
-        if (transcription.isPin()) {
-            return userLog('info', 'Please unpin the transcription that appears to be currently pinned', 'top-end');
-        }
-        if (this.isChatPinned) {
-            return userLog('info', 'Please unpin the chat that appears to be currently pinned', 'top-end');
-        }
-        if (this.isPollPinned) {
-            return userLog('info', 'Please unpin the poll that appears to be currently pinned', 'top-end');
-        }
-        if (this.isEditorPinned) {
-            return userLog('info', 'Please unpin the editor that appears to be currently pinned', 'top-end');
-        }
-        this.isBreakoutPinned ? this.breakoutUnpin() : this.breakoutPin();
-        this.sound('click');
+        return this.breakoutRoomManager.toggleBreakoutPin();
     }
 
     breakoutPin() {
-        if (!this.isVideoPinned) {
-            this.videoMediaContainer.style.top = 0;
-            this.videoMediaContainer.style.width = '70%';
-            this.videoMediaContainer.style.height = '100%';
-        }
-        if (!this.isMobileDevice) this.makeUnDraggable(breakoutPanel, breakoutPanelHeader);
-        this.breakoutPinned();
-        this.isBreakoutPinned = true;
-        setColor(breakoutTogglePin, 'lime');
-        this.resizeVideoMenuBar();
-        resizeVideoMedia();
+        return this.breakoutRoomManager.breakoutPin();
     }
 
     breakoutUnpin() {
-        if (!this.isVideoPinned) {
-            this.videoMediaContainerUnpin();
-        }
-        breakoutPanel.classList.remove('panel-slide-in');
-        this.breakoutCenter();
-        this.isBreakoutPinned = false;
-        setColor(breakoutTogglePin, 'white');
-        this.resizeVideoMenuBar();
-        resizeVideoMedia();
-        if (!this.isMobileDevice) this.makeDraggable(breakoutPanel, breakoutPanelHeader);
+        return this.breakoutRoomManager.breakoutUnpin();
     }
 
     getBreakoutPanelLayoutElements() {
-        const body = breakoutPanel.querySelector('.breakout-panel-body');
-        const sections = breakoutPanel.querySelectorAll('.breakout-section');
-
-        return {
-            body,
-            roomsSection: sections[0],
-            participantsSection: sections[1],
-            roomsList: breakoutPanel.querySelector('.breakout-rooms-list'),
-            participantsList: breakoutPanel.querySelector('.breakout-participants-list'),
-        };
+        return this.breakoutRoomManager.getBreakoutPanelLayoutElements();
     }
 
     breakoutPinned() {
-        const { body, roomsSection, participantsSection, roomsList, participantsList } =
-            this.getBreakoutPanelLayoutElements();
-
-        breakoutPanel.style.position = 'absolute';
-        breakoutPanel.style.top = '0';
-        breakoutPanel.style.right = '0';
-        breakoutPanel.style.left = 'auto';
-        breakoutPanel.style.transform = null;
-        breakoutPanel.style.width = '30%';
-        breakoutPanel.style.height = '100%';
-        breakoutPanel.style.maxWidth = '30%';
-        breakoutPanel.style.maxHeight = '100%';
-        breakoutPanel.style.borderRadius = '14px 0 0 14px';
-
-        if (body) {
-            body.style.maxHeight = 'calc(100vh - 55px)';
-            body.style.height = 'calc(100vh - 55px)';
-            body.style.display = 'grid';
-            body.style.flex = '1 1 auto';
-            body.style.gridTemplateRows = 'auto minmax(0, 1fr) auto minmax(0, 1fr)';
-            body.style.gap = '0';
-            body.style.minHeight = '0';
-            body.style.overflowY = 'hidden';
-            body.style.overscrollBehavior = 'contain';
-            body.style.scrollbarGutter = '';
-        }
-        if (roomsSection) {
-            roomsSection.style.display = 'flex';
-            roomsSection.style.flexDirection = 'column';
-            roomsSection.style.minHeight = '0';
-            roomsSection.style.overflow = 'hidden';
-        }
-        if (roomsList) {
-            roomsList.style.flex = '1 1 auto';
-            roomsList.style.minHeight = '0';
-            roomsList.style.maxHeight = 'none';
-            roomsList.style.overflowY = 'auto';
-            roomsList.style.scrollbarGutter = '';
-        }
-        if (participantsSection) {
-            participantsSection.style.display = 'flex';
-            participantsSection.style.flexDirection = 'column';
-            participantsSection.style.minHeight = '0';
-            participantsSection.style.overflow = 'hidden';
-            participantsSection.style.flex = '1 1 auto';
-            participantsSection.style.alignSelf = 'stretch';
-        }
-        if (participantsList) {
-            participantsList.style.maxHeight = 'none';
-            participantsList.style.flex = '1 1 auto';
-            participantsList.style.minHeight = '0';
-            participantsList.style.overflowY = 'auto';
-            participantsList.style.scrollbarGutter = '';
-        }
-        breakoutPanel.classList.remove('panel-slide-in');
-        void breakoutPanel.offsetWidth;
-        breakoutPanel.classList.add('panel-slide-in');
+        return this.breakoutRoomManager.breakoutPinned();
     }
 
     breakoutCenter() {
-        const { body, roomsSection, participantsSection, roomsList, participantsList } =
-            this.getBreakoutPanelLayoutElements();
+        return this.breakoutRoomManager.breakoutCenter();
+    }
 
-        breakoutPanel.style.position = 'fixed';
-        breakoutPanel.style.transform = 'translate(-50%, -50%)';
-        breakoutPanel.style.top = '50%';
-        breakoutPanel.style.left = '50%';
-        breakoutPanel.style.right = '';
-        breakoutPanel.style.width = '420px';
-        breakoutPanel.style.height = '';
-        breakoutPanel.style.maxWidth = '95vw';
-        breakoutPanel.style.maxHeight = '85vh';
-        breakoutPanel.style.borderRadius = '16px';
-
-        if (body) {
-            body.style.maxHeight = 'calc(85vh - 55px)';
-            body.style.height = '';
-            body.style.display = '';
-            body.style.flex = '';
-            body.style.gridTemplateRows = '';
-            body.style.gap = '';
-            body.style.minHeight = '';
-            body.style.overflowY = '';
-            body.style.overscrollBehavior = '';
-            body.style.scrollbarGutter = '';
-        }
-        if (roomsSection) {
-            roomsSection.style.display = '';
-            roomsSection.style.flexDirection = '';
-            roomsSection.style.minHeight = '';
-            roomsSection.style.overflow = '';
-        }
-        if (roomsList) {
-            roomsList.style.flex = '';
-            roomsList.style.minHeight = '';
-            roomsList.style.maxHeight = '';
-            roomsList.style.overflowY = '';
-            roomsList.style.scrollbarGutter = '';
-        }
-        if (participantsSection) {
-            participantsSection.style.display = '';
-            participantsSection.style.flexDirection = '';
-            participantsSection.style.minHeight = '';
-            participantsSection.style.overflow = '';
-            participantsSection.style.flex = '';
-            participantsSection.style.alignSelf = '';
-        }
-        if (participantsList) {
-            participantsList.style.maxHeight = '';
-            participantsList.style.flex = '';
-            participantsList.style.minHeight = '';
-            participantsList.style.overflowY = '';
-            participantsList.style.scrollbarGutter = '';
-        }
+    get isBreakoutPinned() {
+        return this.breakoutRoomManager.isBreakoutPinned;
+    }
+    set isBreakoutPinned(val) {
+        this.breakoutRoomManager.isBreakoutPinned = val;
     }
 
     pollsUpdate(polls) {
