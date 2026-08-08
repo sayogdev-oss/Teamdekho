@@ -399,6 +399,53 @@ class RoomClient {
         this.leftMsgAvatar = null;
         this.rightMsgAvatar = null;
 
+        // Manager Definitions for conditional loading
+        this._managerDefinitions = {
+            ModeratorManager: {
+                path: '../js/features/ModeratorManager.js',
+                events: [
+                    { name: 'updateRoomModerator', handler: 'handleUpdateRoomModerator' },
+                    { name: 'updateRoomModeratorALL', handler: 'handleUpdateRoomModeratorALL' },
+                ],
+            },
+            LobbyManager: {
+                path: '../js/features/LobbyManager.js',
+                events: [
+                    { name: 'roomPassword', handler: 'roomPassword' },
+                    { name: 'roomLobby', handler: 'roomLobby' },
+                ],
+            },
+            RecordingManager: {
+                path: '../js/features/RecordingManager.js',
+                events: [{ name: 'recordingAction', handler: 'handleRecordingAction' }],
+            },
+            RTMPManager: {
+                path: '../js/features/RTMPManager.js',
+                events: [
+                    { name: 'endRTMP', handler: 'endRTMP' },
+                    { name: 'errorRTMP', handler: 'errorRTMP' },
+                    { name: 'endRTMPfromURL', handler: 'endRTMPfromURL' },
+                    { name: 'errorRTMPfromURL', handler: 'errorRTMPfromURL' },
+                ],
+            },
+            BreakoutRoomManager: {
+                path: '../js/features/BreakoutRoomManager.js',
+                events: [
+                    { name: 'breakoutRoom', handler: 'handleBreakoutRoom' },
+                    { name: 'breakoutRoomCountsChanged', handler: 'handleBreakoutRoomCountsChanged' },
+                    { name: 'breakoutRoomMessage', handler: 'handleBreakoutRoomMessage' },
+                    { name: 'breakoutRoomEnd', handler: 'handleBreakoutRoomEnd' },
+                    { name: 'breakoutRoomCountdown', handler: 'handleBreakoutRoomCountdown' },
+                    { name: 'breakoutRoomHelp', handler: 'handleBreakoutRoomHelp' },
+                ],
+            },
+        };
+
+        // Stores instances of dynamically loaded managers
+        this._managerInstances = {};
+        // Buffers socket events for managers that are not yet loaded
+        this._bufferedEvents = {};
+
         this.localVideoElement = null;
         this.localVideoStream = null;
         this.localAudioStream = null;
@@ -461,11 +508,11 @@ class RoomClient {
         this.followMeManager = new FollowMeManager(this);
         this.pollManager = new PollManager(this);
         this.editorManager = new EditorManager(this);
-        this.rtmpManager = new RTMPManager(this);
-        this.moderatorManager = new ModeratorManager(this);
-        this.recordingManager = new RecordingManager(this);
-        this.lobbyManager = new LobbyManager(this);
-        this.breakoutRoomManager = new BreakoutRoomManager(this);
+        // this.rtmpManager = new RTMPManager(this);
+        // this.moderatorManager = new ModeratorManager(this);
+        // this.recordingManager = new RecordingManager(this);
+        // this.lobbyManager = new LobbyManager(this);
+        // this.breakoutRoomManager = new BreakoutRoomManager(this);
         this.screenShareManager = new ScreenShareManager(this);
         this.fileTransferManager = new FileTransferManager(this);
 
@@ -696,6 +743,9 @@ class RoomClient {
             this.peer_info.peer_presenter = isPresenter;
             this.getId('isUserPresenter').innerText = isPresenter;
             window.localStorage.isReconnected = false;
+
+            // Trigger conditional loading of host-specific managers
+            await this._checkAndLoadHostManagers(isPresenter, isCoHost);
 
             /*
             // GLOBAL LOBBY ENABLED
@@ -1355,8 +1405,6 @@ class RoomClient {
         this.socket.on('dataConsumerClosed', this.handleDataConsumerClosed);
         this.socket.on('message', (data) => this.chatManager.handleMessage(data));
         this.socket.on('roomAction', this.handleRoomAction);
-        this.socket.on('roomPassword', this.handleRoomPassword);
-        this.socket.on('roomLobby', this.handleRoomLobby);
         this.socket.on('cmd', this.handleCmdData);
         this.socket.on('peerAction', this.handlePeerAction);
         this.socket.on('updatePeerInfo', this.handleUpdatePeerInfo);
@@ -1370,25 +1418,127 @@ class RoomClient {
         this.socket.on('videoDrawing', this.handleVideoDrawingData);
         this.socket.on('audioVolume', this.handleAudioVolumeData);
         this.socket.on('dominantSpeaker', this.handleDominantSpeakerData);
-        this.socket.on('updateRoomModerator', this.handleUpdateRoomModeratorData);
-        this.socket.on('updateRoomModeratorALL', this.handleUpdateRoomModeratorALLData);
-        this.socket.on('recordingAction', this.handleRecordingActionData);
-        this.socket.on('endRTMP', this.handleEndRTMP);
-        this.socket.on('errorRTMP', this.handleErrorRTMP);
-        this.socket.on('endRTMPfromURL', this.handleEndRTMPfromURL);
-        this.socket.on('errorRTMPfromURL', this.handleErrorRTMPfromURL);
-        this.socket.on('updatePolls', this.handleUpdatePolls);
-        this.socket.on('editorChange', this.handleEditorChange);
-        this.socket.on('editorActions', this.handleEditorActions);
-        this.socket.on('editorUpdate', this.handleEditorUpdate);
-        this.socket.on('breakoutRoom', (data) => this.breakoutRoomManager.handleBreakoutRoom(data));
-        this.socket.on('breakoutRoomCountsChanged', () => this.breakoutRoomManager.handleBreakoutRoomCountsChanged());
-        this.socket.on('breakoutRoomMessage', (data) => this.breakoutRoomManager.handleBreakoutRoomMessage(data));
-        this.socket.on('breakoutRoomEnd', (data) => this.breakoutRoomManager.handleBreakoutRoomEnd(data));
-        this.socket.on('breakoutRoomCountdown', (data) => this.breakoutRoomManager.handleBreakoutRoomCountdown(data));
-        this.socket.on('breakoutRoomHelp', (data) => this.breakoutRoomManager.handleBreakoutRoomHelp(data));
+        this.socket.on('updatePolls', (data) => this.pollManager.pollsUpdate(data));
+        this.socket.on('editorChange', (data) => this.editorManager.handleEditorData(data));
+        this.socket.on('editorActions', (data) => this.editorManager.handleEditorActionsData(data));
+        this.socket.on('editorUpdate', (data) => this.editorManager.handleEditorUpdateData(data));
         this.socket.on('followMe', (data) => this.followMeManager.handleFollowMeData(data));
         this.socket.on('chatReaction', (data) => this.reactionManager.handleChatReaction(data));
+
+        // LobbyManager events
+        this.socket.on('roomPassword', (data) => {
+            if (this.lobbyManager) {
+                this.lobbyManager.roomPassword(data);
+            } else {
+                this._bufferEvent('LobbyManager', 'roomPassword', data);
+            }
+        });
+        this.socket.on('roomLobby', (data) => {
+            if (this.lobbyManager) {
+                this.lobbyManager.roomLobby(data);
+            } else {
+                this._bufferEvent('LobbyManager', 'roomLobby', data);
+            }
+        });
+
+        // ModeratorManager events
+        this.socket.on('updateRoomModerator', (data) => {
+            if (this.moderatorManager) {
+                this.moderatorManager.handleUpdateRoomModerator(data);
+            } else {
+                this._bufferEvent('ModeratorManager', 'updateRoomModerator', data);
+            }
+        });
+        this.socket.on('updateRoomModeratorALL', (data) => {
+            if (this.moderatorManager) {
+                this.moderatorManager.handleUpdateRoomModeratorALL(data);
+            } else {
+                this._bufferEvent('ModeratorManager', 'updateRoomModeratorALL', data);
+            }
+        });
+
+        // RecordingManager events
+        this.socket.on('recordingAction', (data) => {
+            if (this.recordingManager) {
+                this.recordingManager.handleRecordingAction(data);
+            } else {
+                this._bufferEvent('RecordingManager', 'recordingAction', data);
+            }
+        });
+
+        // RTMPManager events
+        this.socket.on('endRTMP', (data) => {
+            if (this.rtmpManager) {
+                this.rtmpManager.endRTMP(data);
+            } else {
+                this._bufferEvent('RTMPManager', 'endRTMP', data);
+            }
+        });
+        this.socket.on('errorRTMP', (data) => {
+            if (this.rtmpManager) {
+                this.rtmpManager.errorRTMP(data);
+            } else {
+                this._bufferEvent('RTMPManager', 'errorRTMP', data);
+            }
+        });
+        this.socket.on('endRTMPfromURL', (data) => {
+            if (this.rtmpManager) {
+                this.rtmpManager.endRTMPfromURL(data);
+            } else {
+                this._bufferEvent('RTMPManager', 'endRTMPfromURL', data);
+            }
+        });
+        this.socket.on('errorRTMPfromURL', (data) => {
+            if (this.rtmpManager) {
+                this.rtmpManager.errorRTMPfromURL(data);
+            } else {
+                this._bufferEvent('RTMPManager', 'errorRTMPfromURL', data);
+            }
+        });
+
+        // BreakoutRoomManager events
+        this.socket.on('breakoutRoom', (data) => {
+            if (this.breakoutRoomManager) {
+                this.breakoutRoomManager.handleBreakoutRoom(data);
+            } else {
+                this._bufferEvent('BreakoutRoomManager', 'breakoutRoom', data);
+            }
+        });
+        this.socket.on('breakoutRoomCountsChanged', (data) => {
+            if (this.breakoutRoomManager) {
+                this.breakoutRoomManager.handleBreakoutRoomCountsChanged(data);
+            } else {
+                this._bufferEvent('BreakoutRoomManager', 'breakoutRoomCountsChanged', data);
+            }
+        });
+        this.socket.on('breakoutRoomMessage', (data) => {
+            if (this.breakoutRoomManager) {
+                this.breakoutRoomManager.handleBreakoutRoomMessage(data);
+            } else {
+                this._bufferEvent('BreakoutRoomManager', 'breakoutRoomMessage', data);
+            }
+        });
+        this.socket.on('breakoutRoomEnd', (data) => {
+            if (this.breakoutRoomManager) {
+                this.breakoutRoomManager.handleBreakoutRoomEnd(data);
+            } else {
+                this._bufferEvent('BreakoutRoomManager', 'breakoutRoomEnd', data);
+            }
+        });
+        this.socket.on('breakoutRoomCountdown', (data) => {
+            if (this.breakoutRoomManager) {
+                this.breakoutRoomManager.handleBreakoutRoomCountdown(data);
+            } else {
+                this._bufferEvent('BreakoutRoomManager', 'breakoutRoomCountdown', data);
+            }
+        });
+        this.socket.on('breakoutRoomHelp', (data) => {
+            if (this.breakoutRoomManager) {
+                this.breakoutRoomManager.handleBreakoutRoomHelp(data);
+            } else {
+                this._bufferEvent('BreakoutRoomManager', 'breakoutRoomHelp', data);
+            }
+        });
         this.socket.on('consumerScore', ({ consumerId, score }) => {
             if (!score) return;
             if (!this.lastLoggedScores) this.lastLoggedScores = new Map();
@@ -1399,7 +1549,7 @@ class RoomClient {
             }
             this.evaluateConsumerQuality(consumerId, score);
         });
-        this.socket.on('coHostUpdate', ({ peerId, isCoHost: newCoHostStatus }) => {
+        this.socket.on('coHostUpdate', async ({ peerId, isCoHost: newCoHostStatus }) => {
             // Update remote peer's stored info (used by badges on video tiles and participant list)
             const peerData = this.peers && this.peers.get(peerId);
             if (peerData && peerData.peer_info) {
@@ -1425,6 +1575,8 @@ class RoomClient {
                     'top-end',
                     4000
                 );
+                // NEW: Re-check and load managers if co-host status changes for self
+                await this._checkAndLoadHostManagers(isPresenter, isCoHost);
             }
 
             // Update video tile badge (re-render name text on both possible tile locations)
@@ -1850,6 +2002,101 @@ class RoomClient {
 
     async joinBreakoutRoom(breakoutRoom, mainRoom, duration = 'unlimited', roomName = '') {
         return this.breakoutRoomManager.joinBreakoutRoom(breakoutRoom, mainRoom, duration, roomName);
+    }
+
+    /**
+     * Dynamically loads a manager script, instantiates it, registers its socket listeners, and replays buffered events.
+     * @param {string} managerName - The name of the manager to load.
+     * @param {boolean} isPresenter - True if the current user is a presenter.
+     * @param {boolean} isCoHost - True if the current user is a co-host.
+     * @returns {Promise<void>}
+     * @private
+     */
+    async _loadManager(managerName, isPresenter, isCoHost) {
+        if (this._managerInstances[managerName]) {
+            console.log(`${managerName} already loaded.`);
+            return;
+        }
+
+        const managerDef = this._managerDefinitions[managerName];
+        if (!managerDef) {
+            console.error(`Manager definition not found for: ${managerName}`);
+            return;
+        }
+
+        try {
+            // Dynamically load the script using the existing loadFeatureScript pattern
+            await loadFeatureScript(managerDef.path);
+            const ManagerClass = window[managerName];
+            if (!ManagerClass) {
+                throw new Error(`Class ${managerName} not found after script load.`);
+            }
+
+            this._managerInstances[managerName] = new ManagerClass(this);
+            console.log(`Dynamically loaded and instantiated: ${managerName}`);
+
+            // Explicit property mapping to ensure correct lowercase/camelCase naming (e.g. rtmpManager)
+            const propertyNames = {
+                ModeratorManager: 'moderatorManager',
+                LobbyManager: 'lobbyManager',
+                RecordingManager: 'recordingManager',
+                RTMPManager: 'rtmpManager',
+                BreakoutRoomManager: 'breakoutRoomManager',
+            };
+            this[propertyNames[managerName]] = this._managerInstances[managerName];
+
+            // Replay any buffered events for this manager
+            if (this._bufferedEvents[managerName] && this._bufferedEvents[managerName].length > 0) {
+                console.log(`Replaying ${this._bufferedEvents[managerName].length} buffered events for ${managerName}`);
+                this._bufferedEvents[managerName].forEach(({ eventName, data }) => {
+                    const handlerDef = managerDef.events.find(e => e.name === eventName);
+                    if (handlerDef) {
+                        this._managerInstances[managerName][handlerDef.handler](data);
+                    } else {
+                        console.warn(`No handler found for buffered event ${eventName} in ${managerName}`);
+                    }
+                });
+                delete this._bufferedEvents[managerName]; // Clear the buffer
+            }
+        } catch (error) {
+            console.error(`Error loading or initializing ${managerName}:`, error);
+            this.userLog("error", `Failed to load ${managerName}.`, "top-end", 4000);
+        }
+    }
+
+    /**
+     * Buffers a socket event if the target manager is not yet loaded.
+     * @param {string} managerName - The name of the manager the event is intended for.
+     * @param {string} eventName - The name of the socket event.
+     * @param {object} data - The event data.
+     * @returns {void}
+     * @private
+     */
+    _bufferEvent(managerName, eventName, data) {
+        if (!this._bufferedEvents[managerName]) {
+            this._bufferedEvents[managerName] = [];
+        }
+        this._bufferedEvents[managerName].push({ eventName, data });
+        console.log(`Buffered event "${eventName}" for ${managerName}. Current buffer size: ${this._bufferedEvents[managerName].length}`);
+    }
+
+    /**
+     * Checks the current user's role and dynamically loads host-specific managers if necessary.
+     * This method is called once on room join and potentially again if co-host status changes.
+     * @param {boolean} isPresenter - Current presenter status of the user.
+     * @param {boolean} isCoHost - Current co-host status of the user.
+     * @returns {Promise<void>}
+     * @private
+     */
+    async _checkAndLoadHostManagers(isPresenter, isCoHost) {
+        if (isPresenter || isCoHost) {
+            console.log("User is Presenter or Co-Host. Loading host-specific managers...");
+            for (const managerName of Object.keys(this._managerDefinitions)) {
+                await this._loadManager(managerName, isPresenter, isCoHost);
+            }
+        } else {
+            console.log("User is not Presenter or Co-Host. Skipping loading of host-specific managers.");
+        }
     }
 
     // ####################################################
