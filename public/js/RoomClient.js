@@ -293,7 +293,7 @@ class RoomClient {
         this.iceConsumerRestarting = false;
 
         // RTMP selected file name
-        this.selectedRtmpFilename = '';
+        // this.selectedRtmpFilename = '';
 
         // Moderator
         this._moderator = {
@@ -508,6 +508,7 @@ class RoomClient {
         this.followMeManager = new FollowMeManager(this);
         this.pollManager = new PollManager(this);
         this.editorManager = new EditorManager(this);
+        this.chatManager = new ChatManager(this);
         // this.rtmpManager = new RTMPManager(this);
         // this.moderatorManager = new ModeratorManager(this);
         // this.recordingManager = new RecordingManager(this);
@@ -1977,31 +1978,31 @@ class RoomClient {
     };
 
     handleBreakoutRoom = (data) => {
-        return this.breakoutRoomManager.handleBreakoutRoom(data);
+        return this.breakoutRoomManager ? this.breakoutRoomManager.handleBreakoutRoom(data) : undefined;
     };
 
     handleBreakoutRoomCountsChanged = () => {
-        return this.breakoutRoomManager.handleBreakoutRoomCountsChanged();
+        return this.breakoutRoomManager ? this.breakoutRoomManager.handleBreakoutRoomCountsChanged() : undefined;
     };
 
     handleBreakoutRoomMessage = (data) => {
-        return this.breakoutRoomManager.handleBreakoutRoomMessage(data);
+        return this.breakoutRoomManager ? this.breakoutRoomManager.handleBreakoutRoomMessage(data) : undefined;
     };
 
     handleBreakoutRoomEnd = (data) => {
-        return this.breakoutRoomManager.handleBreakoutRoomEnd(data);
+        return this.breakoutRoomManager ? this.breakoutRoomManager.handleBreakoutRoomEnd(data) : undefined;
     };
 
     handleBreakoutRoomCountdown = (data) => {
-        return this.breakoutRoomManager.handleBreakoutRoomCountdown(data);
+        return this.breakoutRoomManager ? this.breakoutRoomManager.handleBreakoutRoomCountdown(data) : undefined;
     };
 
     handleBreakoutRoomHelp = (data) => {
-        return this.breakoutRoomManager.handleBreakoutRoomHelp(data);
+        return this.breakoutRoomManager ? this.breakoutRoomManager.handleBreakoutRoomHelp(data) : undefined;
     };
 
     async joinBreakoutRoom(breakoutRoom, mainRoom, duration = 'unlimited', roomName = '') {
-        return this.breakoutRoomManager.joinBreakoutRoom(breakoutRoom, mainRoom, duration, roomName);
+        return this.breakoutRoomManager ? this.breakoutRoomManager.joinBreakoutRoom(breakoutRoom, mainRoom, duration, roomName) : undefined;
     }
 
     /**
@@ -2026,7 +2027,7 @@ class RoomClient {
 
         try {
             // Dynamically load the script using the existing loadFeatureScript pattern
-            await loadFeatureScript(managerDef.path);
+            await this.loadFeatureScript(managerDef.path);
             const ManagerClass = window[managerName];
             if (!ManagerClass) {
                 throw new Error(`Class ${managerName} not found after script load.`);
@@ -4427,7 +4428,7 @@ class RoomClient {
     exitRoom(disconnectAll = false) {
         const switchDisconnectAllOnLeave = getId('switchDisconnectAllOnLeave');
         if (isPresenter && (disconnectAll || (switchDisconnectAllOnLeave && switchDisconnectAllOnLeave.checked))) {
-            this.moderatorManager.ejectAllOnLeave();
+            this.moderatorManager?.ejectAllOnLeave();
         }
         this.exit();
     }
@@ -4437,7 +4438,7 @@ class RoomClient {
     // ####################################################
 
     ejectAllOnLeave() {
-        return this.moderatorManager.ejectAllOnLeave();
+        return this.moderatorManager ? this.moderatorManager.ejectAllOnLeave() : undefined;
     }
 
     // ####################################################
@@ -5672,12 +5673,12 @@ class RoomClient {
             this.isVideoPinned ||
             this.isChatPinned ||
             this.isEditorPinned ||
-            this.breakoutRoomManager.isBreakoutPinned ||
+            this.isBreakoutPinned ||
             transcription.isPin();
         const menuBarWidth =
             this.isVideoPinned ||
             this.isChatPinned ||
-            this.breakoutRoomManager.isBreakoutPinned ||
+            this.isBreakoutPinned ||
             transcription.isPin()
                 ? '75%'
                 : '70%';
@@ -5706,8 +5707,8 @@ class RoomClient {
         if (this.isEditorPinned) {
             this.editorPin();
         }
-        if (this.breakoutRoomManager.isBreakoutPinned) {
-            this.breakoutRoomManager.breakoutPin();
+        if (this.isBreakoutPinned) {
+            this.breakoutPin();
         }
         if (this.transcription.isPin()) {
             this.transcription.pinned();
@@ -6232,34 +6233,34 @@ class RoomClient {
     // ####################################################
 
     toggleBreakoutPin() {
-        return this.breakoutRoomManager.toggleBreakoutPin();
+        return this.breakoutRoomManager ? this.breakoutRoomManager.toggleBreakoutPin() : undefined;
     }
 
     breakoutPin() {
-        return this.breakoutRoomManager.breakoutPin();
+        return this.breakoutRoomManager ? this.breakoutRoomManager.breakoutPin() : undefined;
     }
 
     breakoutUnpin() {
-        return this.breakoutRoomManager.breakoutUnpin();
+        return this.breakoutRoomManager ? this.breakoutRoomManager.breakoutUnpin() : undefined;
     }
 
     getBreakoutPanelLayoutElements() {
-        return this.breakoutRoomManager.getBreakoutPanelLayoutElements();
+        return this.breakoutRoomManager ? this.breakoutRoomManager.getBreakoutPanelLayoutElements() : undefined;
     }
 
     breakoutPinned() {
-        return this.breakoutRoomManager.breakoutPinned();
+        return this.breakoutRoomManager ? this.breakoutRoomManager.breakoutPinned() : undefined;
     }
 
     breakoutCenter() {
-        return this.breakoutRoomManager.breakoutCenter();
+        return this.breakoutRoomManager ? this.breakoutRoomManager.breakoutCenter() : undefined;
     }
 
     get isBreakoutPinned() {
-        return this.breakoutRoomManager.isBreakoutPinned;
+        return this.breakoutRoomManager ? this.breakoutRoomManager.isBreakoutPinned : undefined;
     }
     set isBreakoutPinned(val) {
-        this.breakoutRoomManager.isBreakoutPinned = val;
+        if (this.breakoutRoomManager) this.breakoutRoomManager.isBreakoutPinned = val;
     }
 
     pollsUpdate(polls) {
@@ -6299,122 +6300,122 @@ class RoomClient {
     // ####################################################
 
     toggleEditor() {
-        return this.editorManager.toggleEditor();
+        return this.editorManager ? this.editorManager.toggleEditor() : undefined;
     }
 
     toggleLockUnlockEditor() {
-        return this.editorManager.toggleLockUnlockEditor();
+        return this.editorManager ? this.editorManager.toggleLockUnlockEditor() : undefined;
     }
 
     editorCenter() {
-        return this.editorManager.editorCenter();
+        return this.editorManager ? this.editorManager.editorCenter() : undefined;
     }
 
     toggleEditorPin() {
-        return this.editorManager.toggleEditorPin();
+        return this.editorManager ? this.editorManager.toggleEditorPin() : undefined;
     }
 
     editorPin() {
-        return this.editorManager.editorPin();
+        return this.editorManager ? this.editorManager.editorPin() : undefined;
     }
 
     editorUnpin() {
-        return this.editorManager.editorUnpin();
+        return this.editorManager ? this.editorManager.editorUnpin() : undefined;
     }
 
     editorPinned() {
-        return this.editorManager.editorPinned();
+        return this.editorManager ? this.editorManager.editorPinned() : undefined;
     }
 
     editorUpdate() {
-        return this.editorManager.editorUpdate();
+        return this.editorManager ? this.editorManager.editorUpdate() : undefined;
     }
 
     handleEditorUpdateData(data) {
-        return this.editorManager.handleEditorUpdateData(data);
+        return this.editorManager ? this.editorManager.handleEditorUpdateData(data) : undefined;
     }
 
     handleEditorData(data) {
-        return this.editorManager.handleEditorData(data);
+        return this.editorManager ? this.editorManager.handleEditorData(data) : undefined;
     }
 
     editorOpen() {
-        return this.editorManager.editorOpen();
+        return this.editorManager ? this.editorManager.editorOpen() : undefined;
     }
 
     handleEditorActionsData(data) {
-        return this.editorManager.handleEditorActionsData(data);
+        return this.editorManager ? this.editorManager.handleEditorActionsData(data) : undefined;
     }
 
     editorIsLocked() {
-        return this.editorManager.editorIsLocked();
+        return this.editorManager ? this.editorManager.editorIsLocked() : undefined;
     }
 
     persistPrivateEditor() {
-        return this.editorManager.persistPrivateEditor();
+        return this.editorManager ? this.editorManager.persistPrivateEditor() : undefined;
     }
 
     toggleEditorPrivate() {
-        return this.editorManager.toggleEditorPrivate();
+        return this.editorManager ? this.editorManager.toggleEditorPrivate() : undefined;
     }
 
     _promptExitEditorPrivateMode() {
-        return this.editorManager._promptExitEditorPrivateMode();
+        return this.editorManager ? this.editorManager._promptExitEditorPrivateMode() : undefined;
     }
 
     _exitEditorPrivateMode() {
-        return this.editorManager._exitEditorPrivateMode();
+        return this.editorManager ? this.editorManager._exitEditorPrivateMode() : undefined;
     }
 
     editorUndo() {
-        return this.editorManager.editorUndo();
+        return this.editorManager ? this.editorManager.editorUndo() : undefined;
     }
 
     editorRedo() {
-        return this.editorManager.editorRedo();
+        return this.editorManager ? this.editorManager.editorRedo() : undefined;
     }
 
     editorCopy() {
-        return this.editorManager.editorCopy();
+        return this.editorManager ? this.editorManager.editorCopy() : undefined;
     }
 
     editorClean() {
-        return this.editorManager.editorClean();
+        return this.editorManager ? this.editorManager.editorClean() : undefined;
     }
 
     editorSave() {
-        return this.editorManager.editorSave();
+        return this.editorManager ? this.editorManager.editorSave() : undefined;
     }
 
     handleEditorSaveResult(result) {
-        return this.editorManager.handleEditorSaveResult(result);
+        return this.editorManager ? this.editorManager.handleEditorSaveResult(result) : undefined;
     }
 
     saveEditorAsText() {
-        return this.editorManager.saveEditorAsText();
+        return this.editorManager ? this.editorManager.saveEditorAsText() : undefined;
     }
 
     saveEditorAsHtml() {
-        return this.editorManager.saveEditorAsHtml();
+        return this.editorManager ? this.editorManager.saveEditorAsHtml() : undefined;
     }
 
     generateFileName(extension) {
-        return this.editorManager.generateFileName(extension);
+        return this.editorManager ? this.editorManager.generateFileName(extension) : undefined;
     }
 
     saveAsHtml(content, file) {
-        return this.editorManager.saveAsHtml(content, file);
+        return this.editorManager ? this.editorManager.saveAsHtml(content, file) : undefined;
     }
 
     editorSendAction(action) {
-        return this.editorManager.editorSendAction(action);
+        return this.editorManager ? this.editorManager.editorSendAction(action) : undefined;
     }
 
     get isEditorPinned() {
-        return this.editorManager.isEditorPinned;
+        return this.editorManager ? this.editorManager.isEditorPinned : false;
     }
     set isEditorPinned(val) {
-        this.editorManager.isEditorPinned = val;
+        if (this.editorManager) this.editorManager.isEditorPinned = val;
     }
 
     // ####################################################
@@ -6422,143 +6423,143 @@ class RoomClient {
     // ####################################################
 
     popupRecordingOnLeaveRoom() {
-        return this.recordingManager.popupRecordingOnLeaveRoom();
+        return this.recordingManager ? this.recordingManager.popupRecordingOnLeaveRoom() : undefined;
     }
 
     showRecServerSideAdvice() {
-        return this.recordingManager.showRecServerSideAdvice();
+        return this.recordingManager ? this.recordingManager.showRecServerSideAdvice() : undefined;
     }
 
     toggleVideoAudioTabs(disabled = false) {
-        return this.recordingManager.toggleVideoAudioTabs(disabled);
+        return this.recordingManager ? this.recordingManager.toggleVideoAudioTabs(disabled) : undefined;
     }
 
     handleRecordingError(error, popupLog = true) {
-        return this.recordingManager.handleRecordingError(error, popupLog);
+        return this.recordingManager ? this.recordingManager.handleRecordingError(error, popupLog) : undefined;
     }
 
     getSupportedMimeTypes() {
-        return this.recordingManager.getSupportedMimeTypes();
+        return this.recordingManager ? this.recordingManager.getSupportedMimeTypes() : undefined;
     }
 
     startRecording() {
-        return this.recordingManager.startRecording();
+        return this.recordingManager ? this.recordingManager.startRecording() : undefined;
     }
 
     recordingOptions(options, audioMixerTracks) {
-        return this.recordingManager.recordingOptions(options, audioMixerTracks);
+        return this.recordingManager ? this.recordingManager.recordingOptions(options, audioMixerTracks) : undefined;
     }
 
     startMobileRecording(options, audioMixerTracks) {
-        return this.recordingManager.startMobileRecording(options, audioMixerTracks);
+        return this.recordingManager ? this.recordingManager.startMobileRecording(options, audioMixerTracks) : undefined;
     }
 
     startDesktopRecording(options, audioMixerTracks) {
-        return this.recordingManager.startDesktopRecording(options, audioMixerTracks);
+        return this.recordingManager ? this.recordingManager.startDesktopRecording(options, audioMixerTracks) : undefined;
     }
 
     initRecording() {
-        return this.recordingManager.initRecording();
+        return this.recordingManager ? this.recordingManager.initRecording() : undefined;
     }
 
     hasAudioTrack(mediaStream) {
-        return this.recordingManager.hasAudioTrack(mediaStream);
+        return this.recordingManager ? this.recordingManager.hasAudioTrack(mediaStream) : undefined;
     }
 
     hasVideoTrack(mediaStream) {
-        return this.recordingManager.hasVideoTrack(mediaStream);
+        return this.recordingManager ? this.recordingManager.hasVideoTrack(mediaStream) : undefined;
     }
 
     getAudioTracksFromAudioElements() {
-        return this.recordingManager.getAudioTracksFromAudioElements();
+        return this.recordingManager ? this.recordingManager.getAudioTracksFromAudioElements() : undefined;
     }
 
     getAudioStreamFromAudioElements() {
-        return this.recordingManager.getAudioStreamFromAudioElements();
+        return this.recordingManager ? this.recordingManager.getAudioStreamFromAudioElements() : undefined;
     }
 
     handleMediaRecorder() {
-        return this.recordingManager.handleMediaRecorder();
+        return this.recordingManager ? this.recordingManager.handleMediaRecorder() : undefined;
     }
 
     generateUUIDv4() {
-        return this.recordingManager.generateUUIDv4();
+        return this.recordingManager ? this.recordingManager.generateUUIDv4() : undefined;
     }
 
     getServerRecFileName() {
-        return this.recordingManager.getServerRecFileName();
+        return this.recordingManager ? this.recordingManager.getServerRecFileName() : undefined;
     }
 
     handleMediaRecorderStart(evt) {
-        return this.recordingManager.handleMediaRecorderStart(evt);
+        return this.recordingManager ? this.recordingManager.handleMediaRecorderStart(evt) : undefined;
     }
 
     handleMediaRecorderData(evt) {
-        return this.recordingManager.handleMediaRecorderData(evt);
+        return this.recordingManager ? this.recordingManager.handleMediaRecorderData(evt) : undefined;
     }
 
     async syncRecordingInCloud(data) {
-        return this.recordingManager.syncRecordingInCloud(data);
+        return this.recordingManager ? this.recordingManager.syncRecordingInCloud(data) : undefined;
     }
 
     async handleMediaRecorderStop(evt) {
-        return this.recordingManager.handleMediaRecorderStop(evt);
+        return this.recordingManager ? this.recordingManager.handleMediaRecorderStop(evt) : undefined;
     }
 
     disableRecordingOptions(disabled = true) {
-        return this.recordingManager.disableRecordingOptions(disabled);
+        return this.recordingManager ? this.recordingManager.disableRecordingOptions(disabled) : undefined;
     }
 
     getWebmFixerFn() {
-        return this.recordingManager.getWebmFixerFn();
+        return this.recordingManager ? this.recordingManager.getWebmFixerFn() : undefined;
     }
 
     handleLocalRecordingStop() {
-        return this.recordingManager.handleLocalRecordingStop();
+        return this.recordingManager ? this.recordingManager.handleLocalRecordingStop() : undefined;
     }
 
     handleServerRecordingStop() {
-        return this.recordingManager.handleServerRecordingStop();
+        return this.recordingManager ? this.recordingManager.handleServerRecordingStop() : undefined;
     }
 
     saveLastRecordingInfo(recordingInfo) {
-        return this.recordingManager.saveLastRecordingInfo(recordingInfo);
+        return this.recordingManager ? this.recordingManager.saveLastRecordingInfo(recordingInfo) : undefined;
     }
 
     cleanLastRecordingInfo() {
-        return this.recordingManager.cleanLastRecordingInfo();
+        return this.recordingManager ? this.recordingManager.cleanLastRecordingInfo() : undefined;
     }
 
     showRecordingInfo(recType, recordingInfo, recordingMsg = '') {
-        return this.recordingManager.showRecordingInfo(recType, recordingInfo, recordingMsg);
+        return this.recordingManager ? this.recordingManager.showRecordingInfo(recType, recordingInfo, recordingMsg) : undefined;
     }
 
     saveRecordingInLocalDevice(blob, recFileName) {
-        return this.recordingManager.saveRecordingInLocalDevice(blob, recFileName);
+        return this.recordingManager ? this.recordingManager.saveRecordingInLocalDevice(blob, recFileName) : undefined;
     }
 
     pauseRecording() {
-        return this.recordingManager.pauseRecording();
+        return this.recordingManager ? this.recordingManager.pauseRecording() : undefined;
     }
 
     resumeRecording() {
-        return this.recordingManager.resumeRecording();
+        return this.recordingManager ? this.recordingManager.resumeRecording() : undefined;
     }
 
     stopRecording() {
-        return this.recordingManager.stopRecording();
+        return this.recordingManager ? this.recordingManager.stopRecording() : undefined;
     }
 
     recordingAction(action) {
-        return this.recordingManager.recordingAction(action);
+        return this.recordingManager ? this.recordingManager.recordingAction(action) : undefined;
     }
 
     handleRecordingAction(data) {
-        return this.recordingManager.handleRecordingAction(data);
+        return this.recordingManager ? this.recordingManager.handleRecordingAction(data) : undefined;
     }
 
     saveRecording(reason) {
-        return this.recordingManager.saveRecording(reason);
+        return this.recordingManager ? this.recordingManager.saveRecording(reason) : undefined;
     }
 
     // ####################################################
@@ -7252,99 +7253,99 @@ class RoomClient {
     }
 
     async roomPassword(data) {
-        return this.lobbyManager.roomPassword(data);
+        return this.lobbyManager ? this.lobbyManager.roomPassword(data) : undefined;
     }
 
     async roomLobby(data) {
-        return this.lobbyManager.roomLobby(data);
+        return this.lobbyManager ? this.lobbyManager.roomLobby(data) : undefined;
     }
 
     lobbyRemovePearForPresenter(data) {
-        return this.lobbyManager.lobbyRemovePearForPresenter(data);
+        return this.lobbyManager ? this.lobbyManager.lobbyRemovePearForPresenter(data) : undefined;
     }
 
     lobbyAction(id, lobby_status) {
-        return this.lobbyManager.lobbyAction(id, lobby_status);
+        return this.lobbyManager ? this.lobbyManager.lobbyAction(id, lobby_status) : undefined;
     }
 
     lobbyAcceptAll() {
-        return this.lobbyManager.lobbyAcceptAll();
+        return this.lobbyManager ? this.lobbyManager.lobbyAcceptAll() : undefined;
     }
 
     lobbyRejectAll() {
-        return this.lobbyManager.lobbyRejectAll();
+        return this.lobbyManager ? this.lobbyManager.lobbyRejectAll() : undefined;
     }
 
     lobbyRemoveAll() {
-        return this.lobbyManager.lobbyRemoveAll();
+        return this.lobbyManager ? this.lobbyManager.lobbyRemoveAll() : undefined;
     }
 
     lobbyRemoveMe(peer_id) {
-        return this.lobbyManager.lobbyRemoveMe(peer_id);
+        return this.lobbyManager ? this.lobbyManager.lobbyRemoveMe(peer_id) : undefined;
     }
 
     lobbyAddPear(data) {
-        return this.lobbyManager.lobbyAddPear(data);
+        return this.lobbyManager ? this.lobbyManager.lobbyAddPear(data) : undefined;
     }
 
     lobbyRemovePear(peer_id) {
-        return this.lobbyManager.lobbyRemovePear(peer_id);
+        return this.lobbyManager ? this.lobbyManager.lobbyRemovePear(peer_id) : undefined;
     }
 
     lobbyRefreshUi() {
-        return this.lobbyManager.lobbyRefreshUi();
+        return this.lobbyManager ? this.lobbyManager.lobbyRefreshUi() : undefined;
     }
 
     lobbyParticipantsCount() {
-        return this.lobbyManager.lobbyParticipantsCount();
+        return this.lobbyManager ? this.lobbyManager.lobbyParticipantsCount() : undefined;
     }
 
     lobbyGetPeerIds() {
-        return this.lobbyManager.lobbyGetPeerIds();
+        return this.lobbyManager ? this.lobbyManager.lobbyGetPeerIds() : undefined;
     }
 
     lobbyGetData(status, peers_id = []) {
-        return this.lobbyManager.lobbyGetData(status, peers_id);
+        return this.lobbyManager ? this.lobbyManager.lobbyGetData(status, peers_id) : undefined;
     }
 
     lobbyToggle() {
-        return this.lobbyManager.lobbyToggle();
+        return this.lobbyManager ? this.lobbyManager.lobbyToggle() : undefined;
     }
 
     roomInvalid() {
-        return this.lobbyManager.roomInvalid();
+        return this.lobbyManager ? this.lobbyManager.roomInvalid() : undefined;
     }
 
     userRoomNotAllowed() {
-        return this.lobbyManager.userRoomNotAllowed();
+        return this.lobbyManager ? this.lobbyManager.userRoomNotAllowed() : undefined;
     }
 
     userUnauthorized() {
-        return this.lobbyManager.userUnauthorized();
+        return this.lobbyManager ? this.lobbyManager.userUnauthorized() : undefined;
     }
 
     unlockTheRoom() {
-        return this.lobbyManager.unlockTheRoom();
+        return this.lobbyManager ? this.lobbyManager.unlockTheRoom() : undefined;
     }
 
     roomIsLocked() {
-        return this.lobbyManager.roomIsLocked();
+        return this.lobbyManager ? this.lobbyManager.roomIsLocked() : undefined;
     }
 
     presenterNotInRoom() {
-        return this.lobbyManager.presenterNotInRoom();
+        return this.lobbyManager ? this.lobbyManager.presenterNotInRoom() : undefined;
     }
 
     waitJoinConfirm() {
-        return this.lobbyManager.waitJoinConfirm();
+        return this.lobbyManager ? this.lobbyManager.waitJoinConfirm() : undefined;
     }
 
     showLobbyDecision(status) {
-        return this.lobbyManager.showLobbyDecision(status);
+        return this.lobbyManager ? this.lobbyManager.showLobbyDecision(status) : undefined;
     }
 
     isBanned() {
-        return this.lobbyManager.isBanned();
+        return this.lobbyManager ? this.lobbyManager.isBanned() : undefined;
     }
 
     // ####################################################
@@ -8437,11 +8438,11 @@ class RoomClient {
     }
 
     toggleCoHost(peerId) {
-        return this.moderatorManager.toggleCoHost(peerId);
+        return this.moderatorManager ? this.moderatorManager.toggleCoHost(peerId) : undefined;
     }
 
     peerGuestNotAllowed(action) {
-        return this.moderatorManager.peerGuestNotAllowed(action);
+        return this.moderatorManager ? this.moderatorManager.peerGuestNotAllowed(action) : undefined;
     }
 
     // ####################################################
@@ -8449,7 +8450,7 @@ class RoomClient {
     // ####################################################
 
     searchPeer() {
-        return this.moderatorManager.searchPeer();
+        return this.moderatorManager ? this.moderatorManager.searchPeer() : undefined;
     }
 
     // ####################################################
@@ -8457,7 +8458,7 @@ class RoomClient {
     // ####################################################
 
     toggleRaiseHands() {
-        return this.moderatorManager.toggleRaiseHands();
+        return this.moderatorManager ? this.moderatorManager.toggleRaiseHands() : undefined;
     }
 
     // ####################################################
@@ -8465,7 +8466,7 @@ class RoomClient {
     // ####################################################
 
     toggleUnreadMsg() {
-        return this.moderatorManager.toggleUnreadMsg();
+        return this.moderatorManager ? this.moderatorManager.toggleUnreadMsg() : undefined;
     }
 
     // ####################################################
@@ -8475,16 +8476,16 @@ class RoomClient {
     showPeerAboutAndMessages(peer_id, peer_name, peer_avatar = false, event = null) {
         // Early moderator guards: refuse to switch (and to mutate any state) when the
         // requested chat is currently blocked by the moderator.
-        if (peer_id === 'ChatGPT' && this.moderatorManager.getModerator().chat_cant_chatgpt) {
+        if (peer_id === 'ChatGPT' && this.moderatorManager?.getModerator()?.chat_cant_chatgpt) {
             return userLog('warning', 'The moderator does not allow you to chat with ChatGPT', 'top-end', 6000);
         }
-        if (peer_id === 'DeepSeek' && this.moderatorManager.getModerator().chat_cant_deep_seek) {
+        if (peer_id === 'DeepSeek' && this.moderatorManager?.getModerator()?.chat_cant_deep_seek) {
             return userLog('warning', 'The moderator does not allow you to chat with DeepSeek', 'top-end', 6000);
         }
-        if (peer_id === 'all' && this.moderatorManager.getModerator().chat_cant_publicly) {
+        if (peer_id === 'all' && this.moderatorManager?.getModerator()?.chat_cant_publicly) {
             return userLog('warning', 'The moderator does not allow you to chat publicly', 'top-end', 6000);
         }
-        if (!['all', 'ChatGPT', 'DeepSeek'].includes(peer_id) && this.moderatorManager.getModerator().chat_cant_privately) {
+        if (!['all', 'ChatGPT', 'DeepSeek'].includes(peer_id) && this.moderatorManager?.getModerator()?.chat_cant_privately) {
             return userLog('warning', 'The moderator does not allow you to chat privately', 'top-end', 6000);
         }
 
@@ -8634,27 +8635,27 @@ class RoomClient {
     // ####################################################
 
     updateRoomModerator(data) {
-        return this.moderatorManager.updateRoomModerator(data);
+        return this.moderatorManager ? this.moderatorManager.updateRoomModerator(data) : undefined;
     }
 
     updateRoomModeratorALL(data) {
-        return this.moderatorManager.updateRoomModeratorALL(data);
+        return this.moderatorManager ? this.moderatorManager.updateRoomModeratorALL(data) : undefined;
     }
 
     getModeratorData(data) {
-        return this.moderatorManager.getModeratorData(data);
+        return this.moderatorManager ? this.moderatorManager.getModeratorData(data) : undefined;
     }
 
     handleUpdateRoomModerator(data) {
-        return this.moderatorManager.handleUpdateRoomModerator(data);
+        return this.moderatorManager ? this.moderatorManager.handleUpdateRoomModerator(data) : undefined;
     }
 
     handleUpdateRoomModeratorALL(data) {
-        return this.moderatorManager.handleUpdateRoomModeratorALL(data);
+        return this.moderatorManager ? this.moderatorManager.handleUpdateRoomModeratorALL(data) : undefined;
     }
 
     getModerator() {
-        return this.moderatorManager.getModerator();
+        return this.moderatorManager ? this.moderatorManager.getModerator() : undefined;
     }
 
 
@@ -9684,35 +9685,35 @@ class RoomClient {
     // ##############################################
 
     initRtmpCustomDestination() {
-        return this.rtmpManager.initRtmpCustomDestination();
+        return this.rtmpManager ? this.rtmpManager.initRtmpCustomDestination() : undefined;
     }
 
     getCustomRtmpUrl() {
-        return this.rtmpManager.getCustomRtmpUrl();
+        return this.rtmpManager ? this.rtmpManager.getCustomRtmpUrl() : undefined;
     }
 
-    // ##############################################
+    // #################################-------------
     // RTMP from FILE
     // ##############################################
 
     getRTMP() {
-        return this.rtmpManager.getRTMP();
+        return this.rtmpManager ? this.rtmpManager.getRTMP() : undefined;
     }
 
     async startRTMP() {
-        return this.rtmpManager.startRTMP();
+        return this.rtmpManager ? this.rtmpManager.startRTMP() : undefined;
     }
 
     stopRTMP() {
-        return this.rtmpManager.stopRTMP();
+        return this.rtmpManager ? this.rtmpManager.stopRTMP() : undefined;
     }
 
     endRTMP(data) {
-        return this.rtmpManager.endRTMP(data);
+        return this.rtmpManager ? this.rtmpManager.endRTMP(data) : undefined;
     }
 
     errorRTMP(data) {
-        return this.rtmpManager.errorRTMP(data);
+        return this.rtmpManager ? this.rtmpManager.errorRTMP(data) : undefined;
     }
 
     // ##############################################
@@ -9720,19 +9721,19 @@ class RoomClient {
     // ##############################################
 
     startRTMPfromURL(inputVideoURL) {
-        return this.rtmpManager.startRTMPfromURL(inputVideoURL);
+        return this.rtmpManager ? this.rtmpManager.startRTMPfromURL(inputVideoURL) : undefined;
     }
 
     stopRTMPfromURL() {
-        return this.rtmpManager.stopRTMPfromURL();
+        return this.rtmpManager ? this.rtmpManager.stopRTMPfromURL() : undefined;
     }
 
     endRTMPfromURL(data) {
-        return this.rtmpManager.endRTMPfromURL(data);
+        return this.rtmpManager ? this.rtmpManager.endRTMPfromURL(data) : undefined;
     }
 
     errorRTMPfromURL(data) {
-        return this.rtmpManager.errorRTMPfromURL(data);
+        return this.rtmpManager ? this.rtmpManager.errorRTMPfromURL(data) : undefined;
     }
 
     // ##############################################
@@ -9740,58 +9741,68 @@ class RoomClient {
     // ##############################################
 
     openRTMPStreamer() {
-        return this.rtmpManager.openRTMPStreamer();
+        return this.rtmpManager ? this.rtmpManager.openRTMPStreamer() : undefined;
     }
 
     isRTMPVideoSupported(video) {
-        return this.rtmpManager.isRTMPVideoSupported(video);
+        return this.rtmpManager ? this.rtmpManager.isRTMPVideoSupported(video) : undefined;
     }
 
     copyRTMPUrl(url) {
-        return this.rtmpManager.copyRTMPUrl(url);
+        return this.rtmpManager ? this.rtmpManager.copyRTMPUrl(url) : undefined;
     }
 
     cleanRTMPUrl() {
-        return this.rtmpManager.cleanRTMPUrl();
+        return this.rtmpManager ? this.rtmpManager.cleanRTMPUrl() : undefined;
     }
 
     showRTMP(rtmp, type = 'file') {
-        return this.rtmpManager.showRTMP(rtmp, type);
+        return this.rtmpManager ? this.rtmpManager.showRTMP(rtmp, type) : undefined;
     }
 
     get selectedRtmpFilename() {
-        return this.rtmpManager.selectedRtmpFilename;
+        return this.rtmpManager ? this.rtmpManager.selectedRtmpFilename : undefined;
     }
     set selectedRtmpFilename(val) {
-        this.rtmpManager.selectedRtmpFilename = val;
+        if (this.rtmpManager) {
+            this.rtmpManager.selectedRtmpFilename = val;
+        }
     }
 
     get rtmpFileStreamer() {
-        return this.rtmpManager.rtmpFileStreamer;
+        return this.rtmpManager ? this.rtmpManager.rtmpFileStreamer : undefined;
     }
     set rtmpFileStreamer(val) {
-        this.rtmpManager.rtmpFileStreamer = val;
+        if (this.rtmpManager) {
+            this.rtmpManager.rtmpFileStreamer = val;
+        }
     }
 
     get rtmpFilestreamer() {
-        return this.rtmpManager.rtmpFileStreamer;
+        return this.rtmpManager ? this.rtmpManager.rtmpFileStreamer : undefined;
     }
     set rtmpFilestreamer(val) {
-        this.rtmpManager.rtmpFileStreamer = val;
+        if (this.rtmpManager) {
+            this.rtmpManager.rtmpFileStreamer = val;
+        }
     }
 
     get rtmpUrlstreamer() {
-        return this.rtmpManager.rtmpUrlstreamer;
+        return this.rtmpManager ? this.rtmpManager.rtmpUrlstreamer : undefined;
     }
     set rtmpUrlstreamer(val) {
-        this.rtmpManager.rtmpUrlstreamer = val;
+        if (this.rtmpManager) {
+            this.rtmpManager.rtmpUrlstreamer = val;
+        }
     }
 
     get rtmpUrltSreamer() {
-        return this.rtmpManager.rtmpUrlstreamer;
+        return this.rtmpManager ? this.rtmpManager.rtmpUrlstreamer : undefined;
     }
     set rtmpUrltSreamer(val) {
-        this.rtmpManager.rtmpUrlstreamer = val;
+        if (this.rtmpManager) {
+            this.rtmpManager.rtmpUrlstreamer = val;
+        }
     }
 
     // ####################################################
