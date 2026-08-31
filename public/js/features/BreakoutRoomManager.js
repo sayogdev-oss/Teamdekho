@@ -357,3 +357,4 @@ class BreakoutRoomManager {
         this.roomClient.breakoutPanel.classList.add('panel-slide-in');
     }
 }
+window.BreakoutRoomManager = BreakoutRoomManager;

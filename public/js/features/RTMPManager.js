@@ -345,3 +345,4 @@ class RTMPManager {
         });
     }
 }
+window.RTMPManager = RTMPManager;

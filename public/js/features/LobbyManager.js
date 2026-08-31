@@ -439,3 +439,4 @@ class LobbyManager {
         });
     }
 }
+window.LobbyManager = LobbyManager;

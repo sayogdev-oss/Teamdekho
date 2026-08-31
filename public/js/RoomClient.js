@@ -8499,8 +8499,11 @@ class RoomClient {
         let participant = this.getId(peer_id);
         if (!participant) {
             peer_id = 'all';
+            peer_name = 'All';
+            peer_avatar = false;
             this.chatPeerId = peer_id;
-            this.chatPeerName = 'All';
+            this.chatPeerName = peer_name;
+            this.chatPeerAvatar = peer_avatar;
             participant = this.getId(peer_id);
         }
         const participantsList = this.getId('participantsList');

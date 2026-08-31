@@ -178,4 +178,20 @@ class ModeratorManager {
         console.log('Get Moderator', rc._moderator);
         return rc._moderator;
     }
+
+    // ####################################################
+    // EJECT ALL ON LEAVE ROOM
+    // ####################################################
+
+    ejectAllOnLeave() {
+        const rc = this.roomClient;
+        const cmd = {
+            type: 'ejectAll',
+            peer_name: rc.peer_name,
+            peer_uuid: rc.peer_uuid,
+            broadcast: true,
+        };
+        rc.emitCmd(cmd);
+    }
 }
+window.ModeratorManager = ModeratorManager;

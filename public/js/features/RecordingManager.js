@@ -747,3 +747,4 @@ class RecordingManager {
         return this._isRecording;
     }
 }
+window.RecordingManager = RecordingManager;
