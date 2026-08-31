@@ -22,7 +22,7 @@ class ChatManager {
             }
             this.chatCenter();
             rc.sound('open');
-            this.showPeerAboutAndMessages(rc.chatPeerId, rc.chatPeerName, rc.chatPeerAvatar);
+            this.roomClient.showPeerAboutAndMessages(rc.chatPeerId, rc.chatPeerName, rc.chatPeerAvatar);
         }
         isParticipantsListOpen = !isParticipantsListOpen;
         rc.isChatOpen = !rc.isChatOpen;
@@ -564,7 +564,7 @@ class ChatManager {
         rc.chatPeerId = to_peer_id;
         rc.chatPeerName = to_peer_name;
         rc.chatPeerAvatar = '';
-        !rc.isChatOpen ? rc.toggleChat() : rc.showPeerAboutAndMessages(to_peer_id, to_peer_name);
+        !rc.isChatOpen ? rc.toggleChat() : rc.roomClient.showPeerAboutAndMessages(to_peer_id, to_peer_name);
     }
 
     async showMessage(data, toggleChat = true) {
